@@ -4,7 +4,7 @@
 **Tags:** BuddyPress, BuddyBoss, profiles, privacy, admin  
 **Requires at least:** 6.6  
 **Tested up to:** 6.8  
-**Stable tag:** 1.0.0  
+**Stable tag:** 1.1.0  
 **License:** GPLv2 or later  
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -31,6 +31,7 @@ Hidden profiles remain visible to:
 * Efficient caching of hidden user IDs
 * WP-CLI support for bulk operations
 * Maintains visibility for admins and profile owners
+* Extensible via filters for custom hiding logic
 
 ## Installation
 
@@ -63,6 +64,77 @@ wp user meta delete <user_id> profile_visibility
 wp cache delete bp_hidden_user_ids
 ```
 
+### Extending with Filters
+
+The plugin provides two filters for extending its functionality:
+
+#### 1. `buddypress_hidden_profiles_is_hidden`
+
+This filter allows you to determine if a specific user's profile should be hidden. It's called when checking individual profiles.
+
+Here's how it could be used:
+
+```php
+add_filter(
+    'buddypress_hidden_profiles_is_hidden',
+    function( $is_hidden, $user_id ) {
+        // If another filter has already decided, respect that decision.
+        if ( is_bool( $is_hidden ) ) {
+            return $is_hidden;
+        }
+
+        // Example: Hide users with a specific meta value.
+        $should_hide = get_user_meta( $user_id, 'my_custom_meta', true );
+        if ( ! empty( $should_hide ) ) {
+            return true;
+        }
+
+        // Fall back to default check.
+        return null;
+    },
+    10,
+    2
+);
+```
+
+#### 2. `buddypress_hidden_profiles_additional_hidden_ids`
+
+This filter allows you to add user IDs to the list of hidden users. It's used in directory listings and should return IDs determined by a performant query.
+
+Here's how it could be used:
+
+```php
+add_filter(
+    'buddypress_hidden_profiles_additional_hidden_ids',
+    function( $additional_hidden ) {
+        global $wpdb;
+        
+        // Example: Get users with a specific meta value in a single query.
+        $extra_hidden = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT user_id FROM {$wpdb->usermeta} 
+                WHERE meta_key = %s",
+                'my_custom_meta'
+            )
+        );
+        
+        return array_merge( $additional_hidden, $extra_hidden );
+    }
+);
+```
+
+### Cache Management
+
+The plugin caches the list of hidden IDs for better performance. It automatically clears its cache when:
+* A user is registered
+* A user is deleted
+* A user's role changes
+
+You can also manually clear the cache using WP-CLI:
+```php
+wp cache delete bp_hidden_user_ids
+```
+
 ## Requirements
 
 * WordPress 6.6 or higher
@@ -77,6 +149,7 @@ If a hidden profile is still visible:
 2. Verify the user has the correct meta value: `profile_visibility = hidden`
 3. Check that the viewing user is not an admin or the profile owner
 4. Ensure the cache is cleared after making changes
+5. Check if any filters are overriding the default behavior
 
 ## Changelog
 
