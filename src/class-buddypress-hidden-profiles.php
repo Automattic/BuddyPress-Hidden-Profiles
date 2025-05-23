@@ -45,6 +45,11 @@ class BuddyPress_Hidden_Profiles {
 		add_action( 'edit_user_profile', array( $this, 'visibility_setting_ui' ) );
 		add_action( 'personal_options_update', array( $this, 'save_visibility_setting' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_visibility_setting' ) );
+
+		// 4) Clear cache when users are added/removed.
+		add_action( 'set_user_role', array( $this, 'clear_hidden_cache' ) );
+		add_action( 'delete_user', array( $this, 'clear_hidden_cache' ) );
+		add_action( 'user_register', array( $this, 'clear_hidden_cache' ) );
 	}
 
 	/**
@@ -90,16 +95,7 @@ class BuddyPress_Hidden_Profiles {
 
 		$args = wp_parse_args( $qs );
 
-		$mq   = $args['meta_query'] ?? array();
-		$mq[] = array(
-			'key'     => self::META_KEY,
-			'value'   => self::META_HIDDEN_VALUE,
-			'compare' => '!=',
-		);
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-		$args['meta_query'] = $mq;
-
-		// Exclude by ID.
+		// Get all hidden user IDs.
 		$hidden = $this->get_hidden_user_ids();
 		if ( $hidden ) {
 			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude
@@ -156,6 +152,13 @@ class BuddyPress_Hidden_Profiles {
 		}
 		
 		// Clear the cache when a user's visibility changes.
+		$this->clear_hidden_cache();
+	}
+
+	/**
+	 * Clear the hidden users cache.
+	 */
+	public function clear_hidden_cache() {
 		wp_cache_delete( 'bp_hidden_user_ids' );
 	}
 
@@ -172,18 +175,34 @@ class BuddyPress_Hidden_Profiles {
 		$hidden_ids = wp_cache_get( $cache_key );
 		
 		if ( false === $hidden_ids ) {
-			// Use direct SQL query instead of get_users() for better performance.
+			// Get users with the meta key set.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$hidden_ids = $wpdb->get_col(
+			$meta_hidden = $wpdb->get_col(
 				$wpdb->prepare(
 					"SELECT user_id FROM {$wpdb->usermeta} 
-				WHERE meta_key = %s AND meta_value = %s",
+					WHERE meta_key = %s AND meta_value = %s",
 					self::META_KEY,
 					self::META_HIDDEN_VALUE
 				)
 			);
-			
-			// Cache for 1 day.
+
+			/**
+			 * Filter the list of hidden user IDs.
+			 *
+			 * This filter allows other code to add user IDs to the list of hidden users.
+			 * The IDs should be determined by a performant query, as this is used in
+			 * directory listings and other high-traffic areas.
+			 *
+			 * @since 1.0.0
+			 *
+			 * @param array $additional_hidden Array of additional user IDs to hide.
+			 */
+			$additional_hidden = apply_filters( 'buddypress_hidden_profiles_additional_hidden_ids', array() );
+
+			// Merge the arrays and remove duplicates.
+			$hidden_ids = array_unique( array_merge( $meta_hidden, $additional_hidden ) );
+
+			// Cache for 1 day - we clear the cache on user changes.
 			wp_cache_set( $cache_key, $hidden_ids, '', DAY_IN_SECONDS );
 		}
 		
@@ -197,6 +216,26 @@ class BuddyPress_Hidden_Profiles {
 	 * @return bool True if the user is hidden, false otherwise.
 	 */
 	public function is_hidden( $user_id ) {
+		/**
+		 * Filter whether a user's profile should be hidden.
+		 *
+		 * This filter allows other code to determine if a profile should be hidden,
+		 * overriding the default meta-based check. Return true to hide the profile,
+		 * false to show it, or null to fall back to the default meta check.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param bool|null $is_hidden Whether the profile should be hidden. Null to use default check.
+		 * @param int       $user_id   The user ID to check.
+		 */
+		$is_hidden = apply_filters( 'buddypress_hidden_profiles_is_hidden', null, $user_id );
+
+		// If the filter returns a boolean, use that value.
+		if ( is_bool( $is_hidden ) ) {
+			return $is_hidden;
+		}
+
+		// Otherwise fall back to the default meta check.
 		return get_user_meta( $user_id, self::META_KEY, true ) === self::META_HIDDEN_VALUE;
 	}
 }
