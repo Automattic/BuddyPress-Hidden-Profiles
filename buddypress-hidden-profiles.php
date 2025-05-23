@@ -10,7 +10,7 @@
  * @wordpress-plugin
  * Plugin Name:       BuddyPress Hidden Profiles
  * Description:       Allows site admins to mark BuddyPress user profiles as hidden, excluding them from appearing in directories, searches, and making their profile pages return a 404 for non-admins.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.6
  * Requires PHP:      8.2
  * Author:            WordPress VIP
