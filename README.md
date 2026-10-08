@@ -72,7 +72,7 @@ wp user meta update <user_id> profile_visibility hidden
 wp user meta delete <user_id> profile_visibility
 
 # Clear the hidden users cache
-wp cache delete bp_hidden_user_ids
+wp cache delete bp_hidden_user_ids buddypress_hidden_profiles
 ```
 
 ### Extending with Filters
@@ -136,14 +136,14 @@ add_filter(
 
 ### Cache Management
 
-The plugin caches the list of hidden IDs for better performance. It automatically clears its cache when:
+The plugin caches the list of hidden IDs for better performance. On multisite, the list is shared by every site in the network. It automatically clears its cache when:
 * A user is registered
 * A user is deleted
 * A user's role changes
 
 You can also manually clear the cache using WP-CLI:
-```php
-wp cache delete bp_hidden_user_ids
+```bash
+wp cache delete bp_hidden_user_ids buddypress_hidden_profiles
 ```
 
 ## Requirements

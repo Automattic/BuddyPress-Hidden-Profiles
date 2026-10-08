@@ -21,7 +21,7 @@ All logic lives in one class, `BuddyPress_Hidden_Profiles` in `src/`, instantiat
 Do not rename these without a migration, because they are stored data or public API:
 
 - **`profile_visibility` user meta, value `hidden`**: what marks a profile as hidden. The README tells admins to set it with WP-CLI.
-- **`bp_hidden_user_ids` cache key**: the README tells admins to delete it by hand.
+- **`bp_hidden_user_ids` cache key, in the global `buddypress_hidden_profiles` group**: the README tells admins to delete it by hand.
 - **The two filters**, `buddypress_hidden_profiles_is_hidden` and `buddypress_hidden_profiles_additional_hidden_ids`, which other code uses to extend the plugin.
 
 ## Commands

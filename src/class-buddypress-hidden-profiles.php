@@ -13,6 +13,8 @@ namespace Automattic\BuddyPressHiddenProfiles;
 class BuddyPress_Hidden_Profiles {
 	const META_KEY          = 'profile_visibility';
 	const META_HIDDEN_VALUE = 'hidden';
+	const CACHE_KEY         = 'bp_hidden_user_ids';
+	const CACHE_GROUP       = 'buddypress_hidden_profiles';
 
 	/**
 	 * Run the plugin.
@@ -20,6 +22,9 @@ class BuddyPress_Hidden_Profiles {
 	 * @return void
 	 */
 	public function run() {
+		// User meta is network-wide, so the hidden list must be too.
+		wp_cache_add_global_groups( self::CACHE_GROUP );
+
 		// 1) 404 direct profile URLs
 		add_action( 'bp_template_redirect', array( $this, 'maybe_hide_profile' ) );
 
@@ -246,7 +251,7 @@ class BuddyPress_Hidden_Profiles {
 	 * Clear the hidden users cache.
 	 */
 	public function clear_hidden_cache() {
-		wp_cache_delete( 'bp_hidden_user_ids' );
+		wp_cache_delete( self::CACHE_KEY, self::CACHE_GROUP );
 	}
 
 	/**
@@ -258,8 +263,7 @@ class BuddyPress_Hidden_Profiles {
 		global $wpdb;
 
 		// Try to get from cache first.
-		$cache_key  = 'bp_hidden_user_ids';
-		$hidden_ids = wp_cache_get( $cache_key );
+		$hidden_ids = wp_cache_get( self::CACHE_KEY, self::CACHE_GROUP );
 
 		if ( false === $hidden_ids ) {
 			// Get users with the meta key set.
@@ -290,7 +294,7 @@ class BuddyPress_Hidden_Profiles {
 			$hidden_ids = array_unique( array_merge( $meta_hidden, $additional_hidden ) );
 
 			// Cache for 1 day - we clear the cache on user changes.
-			wp_cache_set( $cache_key, $hidden_ids, '', DAY_IN_SECONDS );
+			wp_cache_set( self::CACHE_KEY, $hidden_ids, self::CACHE_GROUP, DAY_IN_SECONDS );
 		}
 
 		return $hidden_ids;
