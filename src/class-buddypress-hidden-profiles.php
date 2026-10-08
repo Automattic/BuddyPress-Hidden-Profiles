@@ -70,17 +70,22 @@ class BuddyPress_Hidden_Profiles {
 	 * @return void
 	 */
 	public function maybe_hide_profile() {
-		if ( ! function_exists( 'bp_is_user' ) || ! bp_is_user() ) {
-			return;
-		}
-		$uid = bp_displayed_user_id();
-		if ( ! $uid || $this->current_user_can_view( $uid ) ) {
+		if ( ! $this->is_hidden_profile_request() ) {
 			return;
 		}
 		status_header( 404 );
 		nocache_headers();
 		include get_404_template();
 		exit;
+	}
+
+	/**
+	 * Whether the current request is for a profile the current user may not see.
+	 *
+	 * @return bool True if the request should get a 404.
+	 */
+	public function is_hidden_profile_request() {
+		return function_exists( 'bp_is_user' ) && bp_is_user() && ! $this->current_user_can_view( bp_displayed_user_id() );
 	}
 
 	/**
