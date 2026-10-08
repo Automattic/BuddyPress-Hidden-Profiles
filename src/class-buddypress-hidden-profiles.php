@@ -197,7 +197,7 @@ class BuddyPress_Hidden_Profiles {
 			return array();
 		}
 
-		return array_values( array_diff( wp_parse_id_list( $this->get_hidden_user_ids() ), array( get_current_user_id() ) ) );
+		return array_values( array_diff( $this->get_hidden_user_ids(), array( get_current_user_id() ) ) );
 	}
 
 	/**
@@ -273,7 +273,7 @@ class BuddyPress_Hidden_Profiles {
 	/**
 	 * Get the IDs of hidden users.
 	 *
-	 * @return array The IDs of hidden users.
+	 * @return int[] The IDs of hidden users.
 	 */
 	public function get_hidden_user_ids() {
 		global $wpdb;
@@ -306,8 +306,8 @@ class BuddyPress_Hidden_Profiles {
 			 */
 			$additional_hidden = apply_filters( 'buddypress_hidden_profiles_additional_hidden_ids', array() );
 
-			// Merge the arrays and remove duplicates.
-			$hidden_ids = array_unique( array_merge( $meta_hidden, $additional_hidden ) );
+			// Merge the arrays and remove duplicates. A callback may not return an array.
+			$hidden_ids = array_values( wp_parse_id_list( array_merge( $meta_hidden, (array) $additional_hidden ) ) );
 
 			// Cache for 1 day - we clear the cache on user changes.
 			wp_cache_set( self::CACHE_KEY, $hidden_ids, self::CACHE_GROUP, DAY_IN_SECONDS );
