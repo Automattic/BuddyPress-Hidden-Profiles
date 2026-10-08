@@ -111,6 +111,45 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	/**
+	 * Create a public group whose members are the hidden member and a visible one.
+	 *
+	 * @return int[] Group ID, visible member ID and group admin ID.
+	 */
+	private function create_group_with_members(): array {
+		$group_admin_id = $this->create_active_member();
+		$visible_id     = $this->create_active_member();
+		$group_id       = groups_create_group(
+			array(
+				'creator_id' => $group_admin_id,
+				'name'       => 'Hidden profiles test group',
+				'status'     => 'public',
+			)
+		);
+		groups_join_group( $group_id, $this->member_id );
+		groups_join_group( $group_id, $visible_id );
+
+		return array( $group_id, $visible_id, $group_admin_id );
+	}
+
+	/**
+	 * Run a group members loop, as the group's Members tab does, and return the user IDs it found.
+	 *
+	 * @param int $group_id Group ID.
+	 * @return int[] User IDs.
+	 */
+	private function group_members_loop_ids( int $group_id ): array {
+		bp_group_has_members(
+			array(
+				'group_id'            => $group_id,
+				'exclude_admins_mods' => false,
+				'per_page'            => 100,
+			)
+		);
+
+		return array_map( 'intval', wp_list_pluck( $GLOBALS['members_template']->members, 'user_id' ) );
+	}
+
+	/**
 	 * Send a GET request to the BuddyPress (or BuddyBoss) REST API.
 	 *
 	 * @param string $route  Route after the namespace, e.g. '/members'.
@@ -321,6 +360,36 @@ final class HiddenProfilesTest extends TestCase {
 
 		wp_set_current_user( $this->admin_id );
 		$this->assertSame( 200, $this->rest_get( '/members/' . $this->member_id )->get_status(), 'Admin' );
+	}
+
+	public function test_group_member_list_excludes_hidden_users_for_visitors(): void {
+		$this->hide( $this->member_id );
+		list( $group_id, $visible_id ) = $this->create_group_with_members();
+
+		$ids = $this->group_members_loop_ids( $group_id );
+
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertContains( $visible_id, $ids );
+	}
+
+	public function test_group_member_list_shows_hidden_users_to_group_admins(): void {
+		$this->hide( $this->member_id );
+		list( $group_id, , $group_admin_id ) = $this->create_group_with_members();
+		wp_set_current_user( $group_admin_id );
+
+		$this->assertContains( $this->member_id, $this->group_members_loop_ids( $group_id ) );
+	}
+
+	public function test_rest_group_member_list_excludes_hidden_users_for_visitors(): void {
+		$this->hide( $this->member_id );
+		list( $group_id, $visible_id ) = $this->create_group_with_members();
+
+		$response = $this->rest_get( '/groups/' . $group_id . '/members' );
+
+		$this->assertSame( 200, $response->get_status() );
+		$ids = wp_list_pluck( $response->get_data(), 'id' );
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertContains( $visible_id, $ids );
 	}
 
 	public function test_rest_visible_member_is_unaffected(): void {

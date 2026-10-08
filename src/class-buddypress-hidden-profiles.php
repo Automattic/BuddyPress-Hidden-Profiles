@@ -32,6 +32,8 @@ class BuddyPress_Hidden_Profiles {
 		add_filter( 'bp_groups_member_suggestions_query_args', array( $this, 'exclude_hidden_from_query_args' ) );
 		add_filter( 'bp_rest_members_get_items_query_args', array( $this, 'exclude_hidden_from_query_args' ) );
 		add_filter( 'bp_rest_members_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_after_group_has_members_parse_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
+		add_filter( 'bp_rest_group_members_get_items_query_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 
 		// 3) Admin UI on profile screens
 		add_action( 'show_user_profile', array( $this, 'visibility_setting_ui' ) );
@@ -98,6 +100,26 @@ class BuddyPress_Hidden_Profiles {
 		$args['exclude'] = array_merge( wp_parse_id_list( $args['exclude'] ?? array() ), $hidden );
 
 		return $args;
+	}
+
+	/**
+	 * Exclude hidden users from a group's member list.
+	 *
+	 * The group's own admins and moderators still see everyone, so that they can
+	 * manage, promote or remove hidden members.
+	 *
+	 * @param array|mixed $args BP_Group_Member_Query arguments.
+	 * @return array|mixed The arguments with hidden users excluded.
+	 */
+	public function exclude_hidden_from_group_member_args( $args ) {
+		$group_id = is_array( $args ) && is_numeric( $args['group_id'] ?? null ) ? (int) $args['group_id'] : 0;
+		$user_id  = get_current_user_id();
+
+		if ( $group_id && $user_id && ( groups_is_user_admin( $user_id, $group_id ) || groups_is_user_mod( $user_id, $group_id ) ) ) {
+			return $args;
+		}
+
+		return $this->exclude_hidden_from_query_args( $args );
 	}
 
 	/**

@@ -28,6 +28,12 @@ require_once "{$_tests_dir}/includes/functions.php";
  * Load BuddyPress first: the plugin hooks into bp_loaded, which BuddyPress
  * fires on plugins_loaded. wp-env installs it alongside this plugin.
  */
+// Groups are off by default, but group member lists need testing.
+\tests_add_filter(
+	'bp_active_components',
+	fn( $components ) => array_merge( (array) $components, array( 'groups' => 1 ) )
+);
+
 \tests_add_filter(
 	'muplugins_loaded',
 	function (): void {
