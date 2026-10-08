@@ -25,8 +25,10 @@ class BuddyPress_Hidden_Profiles {
 		// User meta is network-wide, so the hidden list must be too.
 		wp_cache_add_global_groups( self::CACHE_GROUP );
 
-		// 1) 404 direct profile URLs
-		add_action( 'bp_template_redirect', array( $this, 'maybe_hide_profile' ) );
+		// 1) 404 direct profile URLs. Priority 1 runs ahead of BuddyPress's
+		// bp_actions (4) and bp_screens (6), whose handlers, such as activity
+		// feeds, can print a response and exit before a later check runs.
+		add_action( 'bp_template_redirect', array( $this, 'maybe_hide_profile' ), 1 );
 
 		// 2) Exclude from member queries that reach non-admins. These are hooked at the
 		// output boundaries rather than BP_User_Query itself, because that class also

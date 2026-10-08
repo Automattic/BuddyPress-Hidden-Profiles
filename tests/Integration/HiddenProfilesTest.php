@@ -433,6 +433,17 @@ final class HiddenProfilesTest extends TestCase {
 		$this->assertFalse( $this->plugin->is_hidden_profile_request() );
 	}
 
+	public function test_profile_check_runs_before_buddypress_request_handlers(): void {
+		$this->plugin->run();
+
+		$priority = has_action( 'bp_template_redirect', array( $this->plugin, 'maybe_hide_profile' ) );
+
+		$this->assertIsInt( $priority );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_redirect_canonical' ), $priority, 'Should run before the canonical redirect.' );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_actions' ), $priority, 'Should run before feeds and other actions.' );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_screens' ), $priority, 'Should run before screens load templates.' );
+	}
+
 	/*
 	 * Member lists.
 	 */
