@@ -151,6 +151,10 @@ If a hidden profile is still visible:
 4. Ensure the cache is cleared after making changes
 5. Check if any filters are overriding the default behavior
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a development environment and propose a change.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a complete list of changes.
