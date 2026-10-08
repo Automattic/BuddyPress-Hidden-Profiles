@@ -31,10 +31,6 @@ defined( 'ABSPATH' ) || exit;
  *     wp cache delete bp_hidden_user_ids
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
-
 require_once __DIR__ . '/src/class-buddypress-hidden-profiles.php';
 
 \add_action(
@@ -42,5 +38,5 @@ require_once __DIR__ . '/src/class-buddypress-hidden-profiles.php';
 	function () {
 		$manager = new BuddyPress_Hidden_Profiles();
 		$manager->run();
-	} 
+	}
 );

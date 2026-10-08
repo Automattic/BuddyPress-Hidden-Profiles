@@ -1,22 +1,8 @@
 <?php
 /**
- * BuddyPress Hidden Profiles
+ * BuddyPress Hidden Profiles class.
  *
- * @package           BuddyPress-Hidden-Profiles
- * @author            WordPress VIP
- * @copyright         2025-onwards Shared and distributed between contributors.
- * @license           GPL-2.0-or-later
- *
- * @wordpress-plugin
- * Plugin Name:       BuddyPress Hidden Profiles
- * Description:       Allows site admins to mark BuddyPress user profiles as hidden, excluding them from appearing in directories, searches, and making their profile pages return a 404 for non-admins.
- * Version:           1.0.0
- * Requires at least: 6.6
- * Requires PHP:      8.2
- * Author:            WordPress VIP
- * Text Domain:       buddypress-hidden-profiles
- * License:           GPL v2 or later
- * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * @package BuddyPress-Hidden-Profiles
  */
 
 namespace Automattic\BuddyPressHiddenProfiles;
@@ -30,7 +16,7 @@ class BuddyPress_Hidden_Profiles {
 
 	/**
 	 * Run the plugin.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function run() {
@@ -54,11 +40,11 @@ class BuddyPress_Hidden_Profiles {
 
 	/**
 	 * Maybe hide the profile.
-	 * 
+	 *
 	 * Respond to the request with a 404 status code if the user should be hidden.
-	 * 
+	 *
 	 * Profiles are not hidden for the user themselves, or for admins.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function maybe_hide_profile() {
@@ -150,7 +136,7 @@ class BuddyPress_Hidden_Profiles {
 		} else {
 			delete_user_meta( $user_id, self::META_KEY );
 		}
-		
+
 		// Clear the cache when a user's visibility changes.
 		$this->clear_hidden_cache();
 	}
@@ -169,17 +155,17 @@ class BuddyPress_Hidden_Profiles {
 	 */
 	public function get_hidden_user_ids() {
 		global $wpdb;
-		
+
 		// Try to get from cache first.
 		$cache_key  = 'bp_hidden_user_ids';
 		$hidden_ids = wp_cache_get( $cache_key );
-		
+
 		if ( false === $hidden_ids ) {
 			// Get users with the meta key set.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$meta_hidden = $wpdb->get_col(
 				$wpdb->prepare(
-					"SELECT user_id FROM {$wpdb->usermeta} 
+					"SELECT user_id FROM {$wpdb->usermeta}
 					WHERE meta_key = %s AND meta_value = %s",
 					self::META_KEY,
 					self::META_HIDDEN_VALUE
@@ -205,7 +191,7 @@ class BuddyPress_Hidden_Profiles {
 			// Cache for 1 day - we clear the cache on user changes.
 			wp_cache_set( $cache_key, $hidden_ids, '', DAY_IN_SECONDS );
 		}
-		
+
 		return $hidden_ids;
 	}
 
