@@ -1,0 +1,42 @@
+# Copyright (C) 2026 WordPress VIP
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: BuddyPress Hidden Profiles 1.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/Automattic/BuddyPress-Hidden-Profiles/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-08T11:32:27+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: buddypress-hidden-profiles\n"
+
+#. Plugin Name of the plugin
+#: buddypress-hidden-profiles.php
+msgid "BuddyPress Hidden Profiles"
+msgstr ""
+
+#. Description of the plugin
+#: buddypress-hidden-profiles.php
+msgid "Allows site admins to mark BuddyPress user profiles as hidden, excluding them from appearing in directories, searches, and making their profile pages return a 404 for non-admins."
+msgstr ""
+
+#. Author of the plugin
+#: buddypress-hidden-profiles.php
+msgid "WordPress VIP"
+msgstr ""
+
+#: src/class-buddypress-hidden-profiles.php:105
+msgid "Profile Visibility"
+msgstr ""
+
+#: src/class-buddypress-hidden-profiles.php:108
+msgid "Hidden Profile"
+msgstr ""
+
+#: src/class-buddypress-hidden-profiles.php:114
+msgid "Hide this profile from non-admins."
+msgstr ""
