@@ -63,19 +63,6 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	/**
-	 * Log a user in for both WordPress and BuddyPress.
-	 *
-	 * BuddyPress records the logged-in user once, when it sets up its globals,
-	 * so wp_set_current_user() alone leaves bp_loggedin_user_id() unchanged.
-	 *
-	 * @param int $user_id User ID.
-	 */
-	private function log_in( int $user_id ): void {
-		wp_set_current_user( $user_id );
-		buddypress()->loggedin_user->id = $user_id;
-	}
-
-	/**
 	 * Simulate a profile screen submission.
 	 *
 	 * @param int  $user_id User being edited.
@@ -95,11 +82,10 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	/**
-	 * Clean up the superglobal and the BuddyPress logged-in user.
+	 * Clean up the superglobal.
 	 */
 	public function tear_down() {
-		$_POST                          = array();
-		buddypress()->loggedin_user->id = 0;
+		$_POST = array();
 		parent::tear_down();
 	}
 
@@ -166,7 +152,7 @@ final class HiddenProfilesTest extends TestCase {
 
 	public function test_member_directory_excludes_hidden_users_for_non_admins(): void {
 		$this->hide( $this->member_id );
-		$this->log_in( $this->member_id );
+		wp_set_current_user( $this->member_id );
 
 		parse_str( $this->plugin->ajax_exclude_hidden( 'type=active&exclude=5', 'members' ), $args );
 
@@ -176,20 +162,20 @@ final class HiddenProfilesTest extends TestCase {
 
 	public function test_member_directory_is_unfiltered_for_admins(): void {
 		$this->hide( $this->member_id );
-		$this->log_in( $this->admin_id );
+		wp_set_current_user( $this->admin_id );
 
 		$this->assertSame( 'type=active', $this->plugin->ajax_exclude_hidden( 'type=active', 'members' ) );
 	}
 
 	public function test_other_directories_are_unfiltered(): void {
 		$this->hide( $this->member_id );
-		$this->log_in( $this->member_id );
+		wp_set_current_user( $this->member_id );
 
 		$this->assertSame( 'type=active', $this->plugin->ajax_exclude_hidden( 'type=active', 'groups' ) );
 	}
 
 	public function test_admin_can_hide_and_unhide_a_profile(): void {
-		$this->log_in( $this->admin_id );
+		wp_set_current_user( $this->admin_id );
 
 		$this->submit_profile( $this->member_id, true );
 		$this->assertTrue( $this->plugin->is_hidden( $this->member_id ), 'Ticking the box should hide the profile.' );
@@ -199,7 +185,7 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	public function test_saving_clears_the_hidden_ids_cache(): void {
-		$this->log_in( $this->admin_id );
+		wp_set_current_user( $this->admin_id );
 		$this->plugin->get_hidden_user_ids();
 
 		$this->submit_profile( $this->member_id, true );
@@ -208,7 +194,7 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	public function test_save_without_a_valid_nonce_changes_nothing(): void {
-		$this->log_in( $this->admin_id );
+		wp_set_current_user( $this->admin_id );
 
 		$this->submit_profile( $this->member_id, true, false );
 
@@ -216,7 +202,7 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	public function test_non_admin_cannot_hide_a_profile(): void {
-		$this->log_in( $this->member_id );
+		wp_set_current_user( $this->member_id );
 
 		$this->submit_profile( $this->member_id, true );
 
@@ -226,12 +212,12 @@ final class HiddenProfilesTest extends TestCase {
 	public function test_setting_is_shown_to_admins_only(): void {
 		$user = get_userdata( $this->member_id );
 
-		$this->log_in( $this->member_id );
+		wp_set_current_user( $this->member_id );
 		ob_start();
 		$this->plugin->visibility_setting_ui( $user );
 		$this->assertSame( '', ob_get_clean(), 'Non-admins should not see the setting.' );
 
-		$this->log_in( $this->admin_id );
+		wp_set_current_user( $this->admin_id );
 		ob_start();
 		$this->plugin->visibility_setting_ui( $user );
 		$this->assertStringContainsString( 'name="profile_visibility"', ob_get_clean() );
