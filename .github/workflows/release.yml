@@ -15,9 +15,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  # The repository name is mixed case, but the plugin folder (and text domain)
-  # is not. A ZIP rooted at the wrong name installs alongside an existing copy
-  # instead of updating it, so the slug is hardcoded rather than derived.
+  # The ZIP must be rooted at the installed plugin folder name. A ZIP rooted at
+  # any other name installs alongside an existing copy instead of updating it,
+  # so the slug is hardcoded rather than derived from the repository name,
+  # which has differed from it before.
   SLUG: buddypress-hidden-profiles
 
 jobs:

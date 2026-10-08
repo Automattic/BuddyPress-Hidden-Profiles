@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-05-23
 
 ### Added
-* Add new filters to support additional criteria for hiding profiles by @GaryJones in https://github.com/Automattic/BuddyPress-Hidden-Profiles/pull/1
+* Add new filters to support additional criteria for hiding profiles by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/1
 
 ## 1.0.0 - 2025-05-16
 
