@@ -253,6 +253,17 @@ final class HiddenProfilesTest extends TestCase {
 		$this->assertFalse( wp_cache_get( 'bp_hidden_user_ids' ) );
 	}
 
+	public function test_profile_check_runs_before_buddypress_request_handlers(): void {
+		$this->plugin->run();
+
+		$priority = has_action( 'bp_template_redirect', array( $this->plugin, 'maybe_hide_profile' ) );
+
+		$this->assertIsInt( $priority );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_redirect_canonical' ), $priority, 'Should run before the canonical redirect.' );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_actions' ), $priority, 'Should run before feeds and other actions.' );
+		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_screens' ), $priority, 'Should run before screens load templates.' );
+	}
+
 	public function test_members_loop_excludes_hidden_users_for_visitors(): void {
 		$this->hide( $this->member_id );
 		$visible_id = $this->create_active_member();
