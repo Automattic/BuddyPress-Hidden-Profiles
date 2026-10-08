@@ -41,3 +41,11 @@ require_once "{$_tests_dir}/includes/functions.php";
  * and the custom autoloader for the TestCase and the mock object classes.
  */
 WPIntegration\bootstrap_it();
+
+/*
+ * The WordPress test installer drops every table, BuddyPress's included, and
+ * recreates only core's. Member queries need BuddyPress's last activity data.
+ */
+require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+require_once buddypress()->plugin_dir . 'bp-core/admin/bp-core-admin-schema.php';
+bp_core_install();
