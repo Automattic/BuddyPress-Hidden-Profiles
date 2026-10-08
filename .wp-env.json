@@ -1,7 +1,7 @@
 {
   "plugins": [
     ".",
-    "https://downloads.wordpress.org/plugin/buddypress.latest-stable.zip"
+    "https://downloads.wordpress.org/plugin/buddypress.zip"
   ],
   "core": "WordPress/WordPress#master",
   "phpVersion": "8.4",
