@@ -109,8 +109,12 @@ final class HiddenProfilesTest extends TestCase {
 	 * @param bool   $nonce   Whether to send a valid nonce.
 	 */
 	private function submit_profile( string $hook, int $user_id, bool $checked, bool $nonce = true ): void {
-		// Core checks the email field when people save their own profile.
-		$_POST = array( 'email' => get_userdata( $user_id )->user_email );
+		// Core checks the email field when people save their own profile, and before
+		// WordPress 7.0.3 it read the user ID from the form too.
+		$_POST = array(
+			'user_id' => $user_id,
+			'email'   => get_userdata( $user_id )->user_email,
+		);
 		if ( $nonce ) {
 			$_POST['buddypress_hidden_profiles_nonce'] = wp_create_nonce( 'buddypress_hidden_profiles_visibility' );
 		}
