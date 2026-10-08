@@ -16,7 +16,11 @@ Lets site admins hide BuddyPress member profiles from non-admins: hidden members
 | **Requires** | BuddyPress or BuddyBoss Platform |
 | **Distribution** | GitHub releases only; not on WordPress.org |
 
-All logic lives in one class, `BuddyPress_Hidden_Profiles` in `src/`, instantiated on `bp_loaded`.
+`BuddyPress_Hidden_Profiles` is the entry point: on `bp_loaded` it wires up three classes in `src/`:
+
+- **`Hidden_Users`**: who is hidden, who may see them, and the cache.
+- **`Visibility`**: the BuddyPress hooks that keep hidden users out of profile pages, member lists and the REST API. Reads everything from `Hidden_Users`.
+- **`Profile_Setting`**: the admin checkbox on profile screens.
 
 Do not rename these without a migration, because they are stored data or public API:
 
@@ -52,5 +56,5 @@ Follow the standards in `~/code/plugin-standards/`. Key points:
 
 - **The wp-env BuddyPress URL**: wp-env names a plugin's directory after its ZIP file, and the test bootstrap requires `plugins/buddypress/bp-loader.php`. Keep the URL ending in `buddypress.zip`.
 - **Clearing the cache**: anything that changes who is hidden must clear `bp_hidden_user_ids`, or directories keep showing stale results for up to a day. Changes to the `profile_visibility` meta clear it already.
-- **One source of truth**: member lists and `is_hidden()` both read `get_hidden_user_ids()`. Keep it that way, or a user can be missing from lists while their profile still loads.
+- **One source of truth**: member lists and `is_hidden()` both read `Hidden_Users::get_hidden_user_ids()`. Keep it that way, or a user can be missing from lists while their profile still loads.
 - **Release ZIP contents**: the release workflow builds the ZIP with `rsync --exclude-from=.distignore`. Add new development-only files to both `.distignore` and `.gitattributes`.

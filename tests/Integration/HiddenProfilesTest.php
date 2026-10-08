@@ -9,7 +9,8 @@ declare( strict_types=1 );
 
 namespace Automattic\BuddyPressHiddenProfiles\Tests\Integration;
 
-use Automattic\BuddyPressHiddenProfiles\BuddyPress_Hidden_Profiles;
+use Automattic\BuddyPressHiddenProfiles\Hidden_Users;
+use Automattic\BuddyPressHiddenProfiles\Visibility;
 use BP_Groups_Member;
 use BP_Nouveau_Group_Invite_Query;
 use BP_User_Query;
@@ -23,20 +24,29 @@ use Yoast\WPTestUtils\WPIntegration\TestCase;
 /**
  * Covers who is hidden, and from whom.
  *
- * Hooked behaviour runs through the instance the plugin creates on bp_loaded.
- * $plugin is a second instance for calling methods directly; the two share
- * state only through user meta and the object cache.
+ * Hooked behaviour runs through the instances the plugin creates on bp_loaded.
+ * $hidden_users and $visibility are second instances for calling methods
+ * directly; they share state only through user meta and the object cache.
  *
- * @covers \Automattic\BuddyPressHiddenProfiles\BuddyPress_Hidden_Profiles
+ * @covers \Automattic\BuddyPressHiddenProfiles\Hidden_Users
+ * @covers \Automattic\BuddyPressHiddenProfiles\Visibility
+ * @covers \Automattic\BuddyPressHiddenProfiles\Profile_Setting
  */
 final class HiddenProfilesTest extends TestCase {
 
 	/**
-	 * System under test.
+	 * Who is hidden.
 	 *
-	 * @var BuddyPress_Hidden_Profiles
+	 * @var Hidden_Users
 	 */
-	private $plugin;
+	private $hidden_users;
+
+	/**
+	 * What hidden users are kept out of.
+	 *
+	 * @var Visibility
+	 */
+	private $visibility;
 
 	/**
 	 * Administrator user ID.
@@ -53,16 +63,17 @@ final class HiddenProfilesTest extends TestCase {
 	private $member_id;
 
 	/**
-	 * Set up a fresh plugin instance, active users and an empty cache.
+	 * Set up fresh plugin instances, active users and an empty cache.
 	 */
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->plugin    = new BuddyPress_Hidden_Profiles();
-		$this->admin_id  = $this->create_active_member( array( 'role' => 'administrator' ) );
-		$this->member_id = $this->create_active_member();
+		$this->hidden_users = new Hidden_Users();
+		$this->visibility   = new Visibility( $this->hidden_users );
+		$this->admin_id     = $this->create_active_member( array( 'role' => 'administrator' ) );
+		$this->member_id    = $this->create_active_member();
 
-		$this->plugin->clear_hidden_cache();
+		$this->hidden_users->clear_hidden_cache();
 	}
 
 	/**
@@ -82,7 +93,7 @@ final class HiddenProfilesTest extends TestCase {
 	 * @param int $user_id User ID.
 	 */
 	private function hide( int $user_id ): void {
-		update_user_meta( $user_id, BuddyPress_Hidden_Profiles::META_KEY, BuddyPress_Hidden_Profiles::META_HIDDEN_VALUE );
+		update_user_meta( $user_id, Hidden_Users::META_KEY, Hidden_Users::META_HIDDEN_VALUE );
 	}
 
 	/**
@@ -119,7 +130,7 @@ final class HiddenProfilesTest extends TestCase {
 			$_POST['buddypress_hidden_profiles_nonce'] = wp_create_nonce( 'buddypress_hidden_profiles_visibility' );
 		}
 		if ( $checked ) {
-			$_POST[ BuddyPress_Hidden_Profiles::META_KEY ] = BuddyPress_Hidden_Profiles::META_HIDDEN_VALUE;
+			$_POST[ Hidden_Users::META_KEY ] = Hidden_Users::META_HIDDEN_VALUE;
 		}
 
 		do_action( $hook, $user_id );
@@ -235,37 +246,37 @@ final class HiddenProfilesTest extends TestCase {
 	 */
 
 	public function test_user_is_not_hidden_by_default(): void {
-		$this->assertFalse( $this->plugin->is_hidden( $this->member_id ) );
+		$this->assertFalse( $this->hidden_users->is_hidden( $this->member_id ) );
 	}
 
 	public function test_user_with_hidden_meta_is_hidden(): void {
 		$this->hide( $this->member_id );
 
-		$this->assertTrue( $this->plugin->is_hidden( $this->member_id ) );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->member_id ) );
 	}
 
 	public function test_is_hidden_filter_overrides_the_hidden_list_in_both_directions(): void {
 		$this->hide( $this->member_id );
 
 		add_filter( 'buddypress_hidden_profiles_is_hidden', '__return_false' );
-		$this->assertFalse( $this->plugin->is_hidden( $this->member_id ), 'Filter returning false should reveal a hidden user.' );
+		$this->assertFalse( $this->hidden_users->is_hidden( $this->member_id ), 'Filter returning false should reveal a hidden user.' );
 		remove_filter( 'buddypress_hidden_profiles_is_hidden', '__return_false' );
 
 		add_filter( 'buddypress_hidden_profiles_is_hidden', '__return_true' );
-		$this->assertTrue( $this->plugin->is_hidden( $this->admin_id ), 'Filter returning true should hide any user.' );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->admin_id ), 'Filter returning true should hide any user.' );
 	}
 
 	public function test_is_hidden_filter_returning_non_boolean_falls_back_to_the_hidden_list(): void {
 		$this->hide( $this->member_id );
 		add_filter( 'buddypress_hidden_profiles_is_hidden', '__return_empty_string' );
 
-		$this->assertTrue( $this->plugin->is_hidden( $this->member_id ) );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->member_id ) );
 	}
 
 	public function test_users_from_the_additional_ids_filter_are_hidden_everywhere(): void {
 		add_filter( 'buddypress_hidden_profiles_additional_hidden_ids', fn() => array( $this->member_id ) );
 
-		$this->assertTrue( $this->plugin->is_hidden( $this->member_id ), 'Single profile checks should agree with member lists.' );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->member_id ), 'Single profile checks should agree with member lists.' );
 		$this->assertNotContains( $this->member_id, $this->members_loop_ids() );
 		$this->assertSame( 404, $this->rest_get( '/members/' . $this->member_id )->get_status() );
 	}
@@ -277,7 +288,7 @@ final class HiddenProfilesTest extends TestCase {
 			fn() => array( (string) $this->member_id, (string) $this->admin_id )
 		);
 
-		$ids = $this->plugin->get_hidden_user_ids();
+		$ids = $this->hidden_users->get_hidden_user_ids();
 
 		$this->assertTrue( array_is_list( $ids ) );
 		$expected = array( $this->admin_id, $this->member_id );
@@ -290,7 +301,7 @@ final class HiddenProfilesTest extends TestCase {
 		$this->hide( $this->member_id );
 		add_filter( 'buddypress_hidden_profiles_additional_hidden_ids', '__return_null' );
 
-		$this->assertSame( array( $this->member_id ), $this->plugin->get_hidden_user_ids() );
+		$this->assertSame( array( $this->member_id ), $this->hidden_users->get_hidden_user_ids() );
 	}
 
 	/*
@@ -298,32 +309,32 @@ final class HiddenProfilesTest extends TestCase {
 	 */
 
 	public function test_hidden_ids_come_from_the_cache_when_present(): void {
-		wp_cache_set( BuddyPress_Hidden_Profiles::CACHE_KEY, array( 123 ), BuddyPress_Hidden_Profiles::CACHE_GROUP );
+		wp_cache_set( Hidden_Users::CACHE_KEY, array( 123 ), Hidden_Users::CACHE_GROUP );
 
-		$this->assertSame( array( 123 ), $this->plugin->get_hidden_user_ids() );
+		$this->assertSame( array( 123 ), $this->hidden_users->get_hidden_user_ids() );
 	}
 
 	public function test_cache_is_cleared_whenever_the_hidden_meta_changes(): void {
-		$this->assertSame( array(), $this->plugin->get_hidden_user_ids() );
+		$this->assertSame( array(), $this->hidden_users->get_hidden_user_ids() );
 
 		$this->hide( $this->member_id );
-		$this->assertSame( array( $this->member_id ), $this->plugin->get_hidden_user_ids(), 'Adding the meta' );
+		$this->assertSame( array( $this->member_id ), $this->hidden_users->get_hidden_user_ids(), 'Adding the meta' );
 
-		update_user_meta( $this->member_id, BuddyPress_Hidden_Profiles::META_KEY, 'visible' );
-		$this->assertSame( array(), $this->plugin->get_hidden_user_ids(), 'Updating the meta' );
+		update_user_meta( $this->member_id, Hidden_Users::META_KEY, 'visible' );
+		$this->assertSame( array(), $this->hidden_users->get_hidden_user_ids(), 'Updating the meta' );
 
 		$this->hide( $this->member_id );
-		$this->plugin->get_hidden_user_ids();
-		delete_user_meta( $this->member_id, BuddyPress_Hidden_Profiles::META_KEY );
-		$this->assertSame( array(), $this->plugin->get_hidden_user_ids(), 'Deleting the meta' );
+		$this->hidden_users->get_hidden_user_ids();
+		delete_user_meta( $this->member_id, Hidden_Users::META_KEY );
+		$this->assertSame( array(), $this->hidden_users->get_hidden_user_ids(), 'Deleting the meta' );
 	}
 
 	public function test_cache_is_left_alone_when_other_meta_changes(): void {
-		wp_cache_set( BuddyPress_Hidden_Profiles::CACHE_KEY, array( 123 ), BuddyPress_Hidden_Profiles::CACHE_GROUP );
+		wp_cache_set( Hidden_Users::CACHE_KEY, array( 123 ), Hidden_Users::CACHE_GROUP );
 
 		update_user_meta( $this->member_id, 'nickname', 'changed' );
 
-		$this->assertSame( array( 123 ), $this->plugin->get_hidden_user_ids() );
+		$this->assertSame( array( 123 ), $this->hidden_users->get_hidden_user_ids() );
 	}
 
 	/**
@@ -352,11 +363,11 @@ final class HiddenProfilesTest extends TestCase {
 	 * @param callable $event Triggers the event for a user ID.
 	 */
 	public function test_cache_is_cleared_on_user_lifecycle_events( callable $event ): void {
-		wp_cache_set( BuddyPress_Hidden_Profiles::CACHE_KEY, array( 123 ), BuddyPress_Hidden_Profiles::CACHE_GROUP );
+		wp_cache_set( Hidden_Users::CACHE_KEY, array( 123 ), Hidden_Users::CACHE_GROUP );
 
 		$event( $this->member_id );
 
-		$this->assertFalse( wp_cache_get( BuddyPress_Hidden_Profiles::CACHE_KEY, BuddyPress_Hidden_Profiles::CACHE_GROUP ) );
+		$this->assertFalse( wp_cache_get( Hidden_Users::CACHE_KEY, Hidden_Users::CACHE_GROUP ) );
 	}
 
 	public function test_clearing_the_cache_reaches_every_site_on_multisite(): void {
@@ -365,13 +376,13 @@ final class HiddenProfilesTest extends TestCase {
 		}
 		$other_site_id = self::factory()->blog->create();
 		switch_to_blog( $other_site_id );
-		$this->plugin->get_hidden_user_ids();
+		$this->hidden_users->get_hidden_user_ids();
 		restore_current_blog();
 
 		$this->hide( $this->member_id );
 
 		switch_to_blog( $other_site_id );
-		$ids = $this->plugin->get_hidden_user_ids();
+		$ids = $this->hidden_users->get_hidden_user_ids();
 		restore_current_blog();
 		$this->assertSame( array( $this->member_id ), $ids );
 	}
@@ -413,7 +424,7 @@ final class HiddenProfilesTest extends TestCase {
 		$this->go_to_profile( $this->member_id );
 
 		$this->assertSame( $this->member_id, bp_displayed_user_id(), 'The profile URL should resolve to the member.' );
-		$this->assertSame( $expect_404, $this->plugin->is_hidden_profile_request() );
+		$this->assertSame( $expect_404, $this->visibility->is_hidden_profile_request() );
 	}
 
 	public function test_visible_profile_page_is_not_a_404(): void {
@@ -422,7 +433,7 @@ final class HiddenProfilesTest extends TestCase {
 		$this->go_to_profile( $this->admin_id );
 
 		$this->assertSame( $this->admin_id, bp_displayed_user_id() );
-		$this->assertFalse( $this->plugin->is_hidden_profile_request() );
+		$this->assertFalse( $this->visibility->is_hidden_profile_request() );
 	}
 
 	public function test_non_profile_pages_are_not_a_404(): void {
@@ -430,13 +441,13 @@ final class HiddenProfilesTest extends TestCase {
 
 		$this->go_to( home_url( '/' ) );
 
-		$this->assertFalse( $this->plugin->is_hidden_profile_request() );
+		$this->assertFalse( $this->visibility->is_hidden_profile_request() );
 	}
 
 	public function test_profile_check_runs_before_buddypress_request_handlers(): void {
-		$this->plugin->run();
+		$this->visibility->register_hooks();
 
-		$priority = has_action( 'bp_template_redirect', array( $this->plugin, 'maybe_hide_profile' ) );
+		$priority = has_action( 'bp_template_redirect', array( $this->visibility, 'maybe_hide_profile' ) );
 
 		$this->assertIsInt( $priority );
 		$this->assertLessThan( has_action( 'bp_template_redirect', 'bp_redirect_canonical' ), $priority, 'Should run before the canonical redirect.' );
@@ -492,7 +503,7 @@ final class HiddenProfilesTest extends TestCase {
 	public function test_existing_exclusions_are_kept(): void {
 		$this->hide( $this->member_id );
 
-		$args = $this->plugin->exclude_hidden_from_query_args( array( 'exclude' => '5,6' ) );
+		$args = $this->visibility->exclude_hidden_from_query_args( array( 'exclude' => '5,6' ) );
 
 		$this->assertSame( array( 5, 6, $this->member_id ), $args['exclude'] );
 	}
@@ -501,7 +512,7 @@ final class HiddenProfilesTest extends TestCase {
 		$this->hide( $this->member_id );
 		$error = new WP_Error( 'nope' );
 
-		$this->assertSame( $error, $this->plugin->exclude_hidden_from_query_args( $error ) );
+		$this->assertSame( $error, $this->visibility->exclude_hidden_from_query_args( $error ) );
 	}
 
 	public function test_other_user_queries_still_see_hidden_users(): void {
@@ -815,10 +826,10 @@ final class HiddenProfilesTest extends TestCase {
 		wp_set_current_user( $this->admin_id );
 
 		$this->submit_profile( 'edit_user_profile_update', $this->member_id, true );
-		$this->assertTrue( $this->plugin->is_hidden( $this->member_id ), 'Ticking the box should hide the profile.' );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->member_id ), 'Ticking the box should hide the profile.' );
 
 		$this->submit_profile( 'edit_user_profile_update', $this->member_id, false );
-		$this->assertFalse( $this->plugin->is_hidden( $this->member_id ), 'Unticking the box should reveal the profile.' );
+		$this->assertFalse( $this->hidden_users->is_hidden( $this->member_id ), 'Unticking the box should reveal the profile.' );
 	}
 
 	public function test_admin_can_hide_their_own_profile(): void {
@@ -826,16 +837,16 @@ final class HiddenProfilesTest extends TestCase {
 
 		$this->submit_profile( 'personal_options_update', $this->admin_id, true );
 
-		$this->assertTrue( $this->plugin->is_hidden( $this->admin_id ) );
+		$this->assertTrue( $this->hidden_users->is_hidden( $this->admin_id ) );
 	}
 
 	public function test_saving_updates_member_lists_straight_away(): void {
 		wp_set_current_user( $this->admin_id );
-		$this->plugin->get_hidden_user_ids();
+		$this->hidden_users->get_hidden_user_ids();
 
 		$this->submit_profile( 'edit_user_profile_update', $this->member_id, true );
 
-		$this->assertSame( array( $this->member_id ), $this->plugin->get_hidden_user_ids() );
+		$this->assertSame( array( $this->member_id ), $this->hidden_users->get_hidden_user_ids() );
 	}
 
 	public function test_save_without_a_valid_nonce_changes_nothing(): void {
@@ -843,7 +854,7 @@ final class HiddenProfilesTest extends TestCase {
 
 		$this->submit_profile( 'edit_user_profile_update', $this->member_id, true, false );
 
-		$this->assertFalse( $this->plugin->is_hidden( $this->member_id ) );
+		$this->assertFalse( $this->hidden_users->is_hidden( $this->member_id ) );
 	}
 
 	public function test_non_admin_cannot_hide_a_profile(): void {
@@ -851,7 +862,7 @@ final class HiddenProfilesTest extends TestCase {
 
 		$this->submit_profile( 'personal_options_update', $this->member_id, true );
 
-		$this->assertFalse( $this->plugin->is_hidden( $this->member_id ) );
+		$this->assertFalse( $this->hidden_users->is_hidden( $this->member_id ) );
 	}
 
 	public function test_setting_is_not_shown_to_non_admins(): void {
@@ -892,7 +903,7 @@ final class HiddenProfilesTest extends TestCase {
 		$label_for = $tags->get_attribute( 'for' );
 		$this->assertTrue( $tags->next_tag( 'input' ) );
 		$this->assertSame( 'checkbox', $tags->get_attribute( 'type' ) );
-		$this->assertSame( BuddyPress_Hidden_Profiles::META_KEY, $tags->get_attribute( 'name' ) );
+		$this->assertSame( Hidden_Users::META_KEY, $tags->get_attribute( 'name' ) );
 		$this->assertSame( $label_for, $tags->get_attribute( 'id' ), 'The label should be associated with the checkbox.' );
 		$this->assertSame( $hidden, null !== $tags->get_attribute( 'checked' ) );
 		$this->assertTrue( $tags->next_tag( 'input' ) );

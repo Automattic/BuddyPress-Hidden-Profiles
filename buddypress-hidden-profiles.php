@@ -30,6 +30,9 @@ defined( 'ABSPATH' ) || exit;
  *     wp user meta update 1 profile_visibility hidden
  */
 
+require_once __DIR__ . '/src/class-hidden-users.php';
+require_once __DIR__ . '/src/class-visibility.php';
+require_once __DIR__ . '/src/class-profile-setting.php';
 require_once __DIR__ . '/src/class-buddypress-hidden-profiles.php';
 
 \add_action(
