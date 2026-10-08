@@ -1,8 +1,8 @@
 {
 	"name": "automattic/buddypress-hidden-profiles",
 	"description": "Hide BuddyPress profiles from non-admins.",
-	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
+	"type": "wordpress-plugin",
 	"authors": [
 		{
 			"name": "Automattic",
@@ -10,45 +10,50 @@
 		}
 	],
 	"support": {
-		"issues": "https://github.com/Automattic/BuddyPress-Hidden-Profiles/issues",
-		"source": "https://github.com/Automattic/BuddyPress-Hidden-Profiles"
+		"issues": "https://github.com/Automattic/buddypress-hidden-profiles/issues",
+		"source": "https://github.com/Automattic/buddypress-hidden-profiles"
 	},
 	"require": {
-		"composer/installers": "^2",
-		"php": ">=8.2"
+		"php": ">=8.2",
+		"composer/installers": "^2"
 	},
 	"require-dev": {
 		"automattic/vipwpcs": "^3",
-		"php-parallel-lint/php-parallel-lint": "^1.0",
+		"php-parallel-lint/php-parallel-lint": "^1.3",
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
-		"wp-coding-standards/wpcs": "^3.1"
+		"phpunit/phpunit": "^9.6",
+		"yoast/wp-test-utils": "^1.2"
 	},
-	"scripts": {
-		"coverage": [
-			"@putenv WP_MULTISITE=1",
-			"@php ./vendor/bin/phpunit --exclude=ms-excluded --coverage-html ./.phpunit.cache/coverage-html"
-		],
-		"coverage-ci": [
-			"@putenv WP_MULTISITE=1",
-			"@php ./vendor/bin/phpunit --exclude=ms-excluded"
-		],
-		"cs": [
-			"@php ./vendor/bin/phpcs"
-		],
-		"cbf": [
-			"@php ./vendor/bin/phpcbf"
-		],
-		"lint": [
-			"@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude .git"
-		],
-		"lint-ci": [
-			"@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude .git --checkstyle"
-		]
+	"autoload-dev": {
+		"psr-4": {
+			"Automattic\\BuddyPressHiddenProfiles\\Tests\\": "tests/"
+		}
 	},
 	"config": {
 		"allow-plugins": {
 			"composer/installers": true,
 			"dealerdirect/phpcodesniffer-composer-installer": true
-		}
+		},
+		"sort-packages": true
+	},
+	"scripts": {
+		"cs": "@php ./vendor/bin/phpcs -q",
+		"cs-fix": "@php ./vendor/bin/phpcbf -q",
+		"i18n": "@php wp i18n make-pot . ./languages/buddypress-hidden-profiles.pot --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/Automattic/buddypress-hidden-profiles/issues\"}'",
+		"lint": "@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude node_modules --exclude .git",
+		"lint-ci": "@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude node_modules --exclude .git --checkstyle",
+		"test": "@test:integration",
+		"test:integration": "npx wp-env run cli --env-cwd=wp-content/plugins/$(basename \"$PWD\") ./vendor/bin/phpunit --testsuite integration",
+		"test:integration-ms": "npx wp-env run cli --env-cwd=wp-content/plugins/$(basename \"$PWD\") /bin/bash -c 'WP_MULTISITE=1 ./vendor/bin/phpunit --testsuite integration'"
+	},
+	"scripts-descriptions": {
+		"cs": "Run PHP Code Sniffer",
+		"cs-fix": "Run PHP Code Sniffer and fix violations",
+		"i18n": "Generate a POT file for translation",
+		"lint": "Run PHP linting",
+		"lint-ci": "Run PHP linting and send results to stdout",
+		"test": "Run all tests",
+		"test:integration": "Run integration tests",
+		"test:integration-ms": "Run integration tests in multisite mode"
 	}
 }

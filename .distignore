@@ -1,11 +1,31 @@
+# Files excluded from the distributable ZIP built by
+# .github/workflows/release.yml. Passed to `rsync --exclude-from`, so a leading
+# slash anchors to the plugin root.
+#
+# Adding a new development-only file? Add it here and to .gitattributes, or it
+# ends up in the ZIP or GitHub's source archives.
+
+/.claude
+/.context
 /.distignore
 /.editorconfig
 /.git
-/.gitignore
+/.gitattributes
 /.github
+/.gitignore
+/.npmrc
 /.phpcs.xml.dist
+/.phpunit.cache
+/.wp-env.json
+/.wp-env.override.json
+/AGENTS.md
+/CHANGELOG.md
+/CONTRIBUTING.md
 /composer.json
+/composer.lock
+/node_modules
 /package.json
 /package-lock.json
 /phpunit.xml.dist
 /tests
+/vendor

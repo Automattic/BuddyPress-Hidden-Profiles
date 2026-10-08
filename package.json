@@ -1,0 +1,12 @@
+{
+  "name": "buddypress-hidden-profiles",
+  "version": "1.2.0",
+  "description": "Hide BuddyPress profiles from non-admins.",
+  "private": true,
+  "scripts": {
+    "wp-env": "wp-env"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^11.17.0"
+  }
+}
