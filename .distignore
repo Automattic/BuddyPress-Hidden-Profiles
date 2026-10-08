@@ -5,6 +5,7 @@
 # Adding a new development-only file? Add it here and to .gitattributes, or it
 # ends up in the ZIP or GitHub's source archives.
 
+/.claude
 /.context
 /.distignore
 /.editorconfig
@@ -17,6 +18,7 @@
 /.phpunit.cache
 /.wp-env.json
 /.wp-env.override.json
+/AGENTS.md
 /CHANGELOG.md
 /CONTRIBUTING.md
 /composer.json

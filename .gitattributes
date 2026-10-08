@@ -4,6 +4,7 @@
 # https://blog.madewithlove.be/post/gitattributes/
 
 # Directories
+/.claude/                        export-ignore
 /.github/                        export-ignore
 /tests/                          export-ignore
 
@@ -15,6 +16,7 @@
 /.npmrc                          export-ignore
 /.phpcs.xml.dist                 export-ignore
 /.wp-env.json                    export-ignore
+/AGENTS.md                       export-ignore
 /CHANGELOG.md                    export-ignore
 /CONTRIBUTING.md                 export-ignore
 /composer.json                   export-ignore
