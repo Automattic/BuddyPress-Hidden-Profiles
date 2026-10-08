@@ -34,6 +34,8 @@ class BuddyPress_Hidden_Profiles {
 		add_filter( 'bp_rest_members_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
 		add_filter( 'bp_after_group_has_members_parse_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 		add_filter( 'bp_rest_group_members_get_items_query_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
+		add_filter( 'bp_rest_members_action_update_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_action( 'bp_pre_user_query_construct', array( $this, 'exclude_hidden_from_unfiltered_lists' ), 20 );
 
 		// 3) Admin UI on profile screens
 		add_action( 'show_user_profile', array( $this, 'visibility_setting_ui' ) );
@@ -120,6 +122,29 @@ class BuddyPress_Hidden_Profiles {
 		}
 
 		return $this->exclude_hidden_from_query_args( $args );
+	}
+
+	/**
+	 * Exclude hidden users from member lists that offer no arguments filter.
+	 *
+	 * Covers the @mention suggestions primed on page load and the lists of people
+	 * who could be invited to a group. Every other BP_User_Query is left alone.
+	 *
+	 * Group admins get no exemption here, unlike for their group's member list:
+	 * anyone can create a group, so an exemption would let anyone list hidden users.
+	 *
+	 * Runs at priority 20 because BP_Nouveau_Group_Invite_Query replaces 'exclude'
+	 * at priority 10.
+	 *
+	 * @param \BP_User_Query $query The query, before it runs.
+	 */
+	public function exclude_hidden_from_unfiltered_lists( $query ) {
+		if ( $query instanceof \BP_Nouveau_Group_Invite_Query
+			|| doing_action( 'bp_activity_mentions_prime_results' )
+			|| doing_action( 'bbp_forums_mentions_prime_results' )
+		) {
+			$query->query_vars = $this->exclude_hidden_from_query_args( $query->query_vars );
+		}
 	}
 
 	/**

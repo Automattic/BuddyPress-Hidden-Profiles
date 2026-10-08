@@ -111,6 +111,23 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	/**
+	 * Run a bare BP_User_Query, as internal lookups do, and return the user IDs it found.
+	 *
+	 * @return int[] User IDs.
+	 */
+	private function user_query_ids(): array {
+		bp_update_user_last_activity( $this->member_id );
+		$query = new \BP_User_Query(
+			array(
+				'type'     => 'active',
+				'per_page' => 100,
+			)
+		);
+
+		return array_map( 'intval', $query->user_ids );
+	}
+
+	/**
 	 * Create a public group whose members are the hidden member and a visible one.
 	 *
 	 * @return int[] Group ID, visible member ID and group admin ID.
@@ -390,6 +407,76 @@ final class HiddenProfilesTest extends TestCase {
 		$ids = wp_list_pluck( $response->get_data(), 'id' );
 		$this->assertNotContains( $this->member_id, $ids );
 		$this->assertContains( $visible_id, $ids );
+	}
+
+	public function test_primed_mention_suggestions_exclude_hidden_users(): void {
+		$this->hide( $this->member_id );
+		$visible_id = $this->create_active_member();
+		wp_set_current_user( $this->create_active_member() );
+
+		// Stands in for the prime callbacks, which build a BP_User_Query with no arguments filter.
+		$ids = array();
+		$prime = function () use ( &$ids ) {
+			$ids = $this->user_query_ids();
+		};
+		add_action( 'bp_activity_mentions_prime_results', $prime );
+		do_action( 'bp_activity_mentions_prime_results' );
+
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertContains( $visible_id, $ids );
+	}
+
+	public function test_other_user_queries_still_see_hidden_users(): void {
+		$this->hide( $this->member_id );
+
+		$this->assertContains(
+			$this->member_id,
+			$this->user_query_ids(),
+			'Internal lookups, such as activity authors, must still find hidden users.'
+		);
+	}
+
+	public function test_group_invite_list_excludes_hidden_users_even_for_group_admins(): void {
+		$this->hide( $this->member_id );
+		$group_admin_id = $this->create_active_member();
+		$visible_id     = $this->create_active_member();
+		$group_id       = groups_create_group(
+			array(
+				'creator_id' => $group_admin_id,
+				'name'       => 'Hidden profiles invite group',
+				'status'     => 'public',
+			)
+		);
+		wp_set_current_user( $group_admin_id );
+
+		// The Nouveau template pack only loads its group classes on front-end requests.
+		require_once buddypress()->plugin_dir . 'bp-templates/bp-nouveau/includes/groups/classes.php';
+		$query = new \BP_Nouveau_Group_Invite_Query(
+			array(
+				'group_id'     => $group_id,
+				'type'         => 'alphabetical',
+				'per_page'     => 100,
+				'is_confirmed' => true,
+			)
+		);
+		$ids   = array_map( 'intval', $query->user_ids );
+
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertNotContains( $group_admin_id, $ids, 'Existing group members should still be excluded.' );
+		$this->assertContains( $visible_id, $ids );
+	}
+
+	public function test_rest_member_actions_treat_hidden_members_as_missing(): void {
+		$this->hide( $this->member_id );
+		wp_set_current_user( $this->create_active_member() );
+		$request = new \WP_REST_Request( 'POST' );
+		$request->set_param( 'id', $this->member_id );
+
+		// BuddyBoss's follow/unfollow endpoint; BuddyPress has no equivalent route to dispatch to.
+		$result = apply_filters( 'bp_rest_members_action_update_item_permissions_check', true, $request );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 404, $result->get_error_data()['status'] );
 	}
 
 	public function test_rest_visible_member_is_unaffected(): void {
