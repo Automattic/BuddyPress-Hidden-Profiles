@@ -13,6 +13,8 @@ namespace Automattic\BuddyPressHiddenProfiles;
 class BuddyPress_Hidden_Profiles {
 	const META_KEY          = 'profile_visibility';
 	const META_HIDDEN_VALUE = 'hidden';
+	const CACHE_KEY         = 'bp_hidden_user_ids';
+	const CACHE_GROUP       = 'buddypress_hidden_profiles';
 
 	/**
 	 * Run the plugin.
@@ -20,6 +22,9 @@ class BuddyPress_Hidden_Profiles {
 	 * @return void
 	 */
 	public function run() {
+		// User meta is network-wide, so the hidden list must be too.
+		wp_cache_add_global_groups( self::CACHE_GROUP );
+
 		// 1) 404 direct profile URLs. Priority 1 runs ahead of BuddyPress's
 		// bp_actions (4) and bp_screens (6), whose handlers, such as activity
 		// feeds, can print a response and exit before a later check runs.
@@ -37,6 +42,9 @@ class BuddyPress_Hidden_Profiles {
 		add_filter( 'bp_after_group_has_members_parse_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 		add_filter( 'bp_rest_group_members_get_items_query_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 		add_filter( 'bp_rest_members_action_update_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_attachments_member_avatar_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_attachments_member_cover_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_xprofile_data_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
 		add_action( 'bp_pre_user_query_construct', array( $this, 'exclude_hidden_from_unfiltered_lists' ), 20 );
 
 		// 3) Admin UI on profile screens
@@ -45,7 +53,10 @@ class BuddyPress_Hidden_Profiles {
 		add_action( 'personal_options_update', array( $this, 'save_visibility_setting' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_visibility_setting' ) );
 
-		// 4) Clear cache when users are added/removed.
+		// 4) Clear cache when who is hidden may have changed.
+		add_action( 'added_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
+		add_action( 'updated_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
+		add_action( 'deleted_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
 		add_action( 'set_user_role', array( $this, 'clear_hidden_cache' ) );
 		add_action( 'delete_user', array( $this, 'clear_hidden_cache' ) );
 		add_action( 'user_register', array( $this, 'clear_hidden_cache' ) );
@@ -61,17 +72,22 @@ class BuddyPress_Hidden_Profiles {
 	 * @return void
 	 */
 	public function maybe_hide_profile() {
-		if ( ! function_exists( 'bp_is_user' ) || ! bp_is_user() ) {
-			return;
-		}
-		$uid = bp_displayed_user_id();
-		if ( ! $uid || $this->current_user_can_view( $uid ) ) {
+		if ( ! $this->is_hidden_profile_request() ) {
 			return;
 		}
 		status_header( 404 );
 		nocache_headers();
 		include get_404_template();
 		exit;
+	}
+
+	/**
+	 * Whether the current request is for a profile the current user may not see.
+	 *
+	 * @return bool True if the request should get a 404.
+	 */
+	public function is_hidden_profile_request() {
+		return function_exists( 'bp_is_user' ) && bp_is_user() && ! $this->current_user_can_view( bp_displayed_user_id() );
 	}
 
 	/**
@@ -152,12 +168,19 @@ class BuddyPress_Hidden_Profiles {
 	/**
 	 * Respond to REST requests for a single hidden member as if they don't exist.
 	 *
+	 * Covers the member itself and routes about them, such as their avatar,
+	 * which name the member 'user_id' rather than 'id'.
+	 *
 	 * @param true|\WP_Error   $retval  The permission check result so far.
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return true|\WP_Error The permission check result.
 	 */
 	public function rest_hide_member( $retval, $request ) {
-		if ( true !== $retval || $this->current_user_can_view( (int) $request['id'] ) ) {
+		// Use the name the route gives the member, but read it as the endpoint does:
+		// a query parameter of the same name overrides the route's value.
+		$param = array_key_exists( 'user_id', $request->get_url_params() ) ? 'user_id' : 'id';
+
+		if ( true !== $retval || $this->current_user_can_view( (int) $request->get_param( $param ) ) ) {
 			return $retval;
 		}
 
@@ -191,7 +214,7 @@ class BuddyPress_Hidden_Profiles {
 			return array();
 		}
 
-		return array_values( array_diff( wp_parse_id_list( $this->get_hidden_user_ids() ), array( get_current_user_id() ) ) );
+		return array_values( array_diff( $this->get_hidden_user_ids(), array( get_current_user_id() ) ) );
 	}
 
 	/**
@@ -205,12 +228,13 @@ class BuddyPress_Hidden_Profiles {
 		}
 		$value = get_user_meta( $user->ID, self::META_KEY, true );
 		?>
-		<h3><?php esc_html_e( 'Profile Visibility', 'buddypress-hidden-profiles' ); ?></h3>
+		<h2><?php esc_html_e( 'Profile Visibility', 'buddypress-hidden-profiles' ); ?></h2>
 		<table class="form-table">
 			<tr>
-				<th><label for="<?php echo esc_attr( self::META_KEY ); ?>"><?php esc_html_e( 'Hidden Profile', 'buddypress-hidden-profiles' ); ?></label></th>
+				<th><label for="buddypress-hidden-profiles-visibility"><?php esc_html_e( 'Hidden Profile', 'buddypress-hidden-profiles' ); ?></label></th>
 				<td>
 					<input type="checkbox"
+							id="buddypress-hidden-profiles-visibility"
 							name="<?php echo esc_attr( self::META_KEY ); ?>"
 							value="<?php echo esc_attr( self::META_HIDDEN_VALUE ); ?>"
 							<?php checked( $value, self::META_HIDDEN_VALUE ); ?> />
@@ -239,29 +263,40 @@ class BuddyPress_Hidden_Profiles {
 		} else {
 			delete_user_meta( $user_id, self::META_KEY );
 		}
-
-		// Clear the cache when a user's visibility changes.
-		$this->clear_hidden_cache();
 	}
 
 	/**
 	 * Clear the hidden users cache.
 	 */
 	public function clear_hidden_cache() {
-		wp_cache_delete( 'bp_hidden_user_ids' );
+		wp_cache_delete( self::CACHE_KEY, self::CACHE_GROUP );
+	}
+
+	/**
+	 * Clear the hidden users cache when a user's visibility meta changes.
+	 *
+	 * This covers the profile screen, WP-CLI and any other code that changes the meta.
+	 *
+	 * @param int|int[] $meta_ids Meta ID(s), unused.
+	 * @param int       $user_id  User ID, unused.
+	 * @param string    $meta_key Meta key.
+	 */
+	public function maybe_clear_hidden_cache( $meta_ids, $user_id, $meta_key ) {
+		if ( self::META_KEY === $meta_key ) {
+			$this->clear_hidden_cache();
+		}
 	}
 
 	/**
 	 * Get the IDs of hidden users.
 	 *
-	 * @return array The IDs of hidden users.
+	 * @return int[] The IDs of hidden users.
 	 */
 	public function get_hidden_user_ids() {
 		global $wpdb;
 
 		// Try to get from cache first.
-		$cache_key  = 'bp_hidden_user_ids';
-		$hidden_ids = wp_cache_get( $cache_key );
+		$hidden_ids = wp_cache_get( self::CACHE_KEY, self::CACHE_GROUP );
 
 		if ( false === $hidden_ids ) {
 			// Get users with the meta key set.
@@ -288,11 +323,11 @@ class BuddyPress_Hidden_Profiles {
 			 */
 			$additional_hidden = apply_filters( 'buddypress_hidden_profiles_additional_hidden_ids', array() );
 
-			// Merge the arrays and remove duplicates.
-			$hidden_ids = array_unique( array_merge( $meta_hidden, $additional_hidden ) );
+			// Merge the arrays and remove duplicates. A callback may not return an array.
+			$hidden_ids = array_values( wp_parse_id_list( array_merge( $meta_hidden, (array) $additional_hidden ) ) );
 
 			// Cache for 1 day - we clear the cache on user changes.
-			wp_cache_set( $cache_key, $hidden_ids, '', DAY_IN_SECONDS );
+			wp_cache_set( self::CACHE_KEY, $hidden_ids, self::CACHE_GROUP, DAY_IN_SECONDS );
 		}
 
 		return $hidden_ids;
@@ -308,13 +343,15 @@ class BuddyPress_Hidden_Profiles {
 		/**
 		 * Filter whether a user's profile should be hidden.
 		 *
-		 * This filter allows other code to determine if a profile should be hidden,
-		 * overriding the default meta-based check. Return true to hide the profile,
-		 * false to show it, or null to fall back to the default meta check.
+		 * This filter allows other code to decide whether a single profile is hidden,
+		 * for its profile page and REST requests for it by ID. It doesn't affect
+		 * member lists: use buddypress_hidden_profiles_additional_hidden_ids to hide
+		 * a user everywhere. Return true to hide the profile, false to show it, or
+		 * null to fall back to the list of hidden user IDs.
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param bool|null $is_hidden Whether the profile should be hidden. Null to use default check.
+		 * @param bool|null $is_hidden Whether the profile should be hidden. Null to use the hidden list.
 		 * @param int       $user_id   The user ID to check.
 		 */
 		$is_hidden = apply_filters( 'buddypress_hidden_profiles_is_hidden', null, $user_id );
@@ -324,7 +361,7 @@ class BuddyPress_Hidden_Profiles {
 			return $is_hidden;
 		}
 
-		// Otherwise fall back to the default meta check.
-		return get_user_meta( $user_id, self::META_KEY, true ) === self::META_HIDDEN_VALUE;
+		// Otherwise fall back to the same list that member lists use.
+		return in_array( (int) $user_id, $this->get_hidden_user_ids(), true );
 	}
 }

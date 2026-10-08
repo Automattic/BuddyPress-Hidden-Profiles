@@ -21,7 +21,7 @@ This plugin provides a simple way to hide specific BuddyPress user profiles from
 * The user is excluded from group member lists, except for that group's admins and moderators
 * The user is excluded from group invite lists
 * The user is excluded from @mention suggestions
-* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them by ID returns a 404
+* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them, their avatar, their cover image or their profile field data by ID returns a 404
 
 Hidden profiles remain visible to:
 * The profile owner themselves
@@ -70,10 +70,9 @@ wp user meta update <user_id> profile_visibility hidden
 
 # Unhide a profile
 wp user meta delete <user_id> profile_visibility
-
-# Clear the hidden users cache
-wp cache delete bp_hidden_user_ids
 ```
+
+Changing the `profile_visibility` meta clears the hidden users cache, so the change shows straight away.
 
 ### Extending with Filters
 
@@ -81,7 +80,7 @@ The plugin provides two filters for extending its functionality:
 
 #### 1. `buddypress_hidden_profiles_is_hidden`
 
-This filter allows you to determine if a specific user's profile should be hidden. It's called when checking individual profiles.
+This filter allows you to decide whether a single user's profile is hidden. It's called for their profile page and for REST API requests for them by ID. It doesn't affect member lists, so to hide a user everywhere, use the `buddypress_hidden_profiles_additional_hidden_ids` filter instead. Return `null` to fall back to the list of hidden users.
 
 Here's how it could be used:
 
@@ -110,7 +109,7 @@ add_filter(
 
 #### 2. `buddypress_hidden_profiles_additional_hidden_ids`
 
-This filter allows you to add user IDs to the list of hidden users. It's used in directory listings and should return IDs determined by a performant query.
+This filter allows you to add user IDs to the list of hidden users. Users it returns are hidden everywhere: member lists, profile pages and the REST API. It should return an array of IDs determined by a performant query. The result is cached for up to a day, so clear the cache when the users it returns change.
 
 Here's how it could be used:
 
@@ -136,14 +135,15 @@ add_filter(
 
 ### Cache Management
 
-The plugin caches the list of hidden IDs for better performance. It automatically clears its cache when:
+The plugin caches the list of hidden IDs for better performance. On multisite, the list is shared by every site in the network. It automatically clears its cache when:
+* A user's `profile_visibility` meta changes, whether from the profile screen, WP-CLI or code
 * A user is registered
 * A user is deleted
 * A user's role changes
 
 You can also manually clear the cache using WP-CLI:
-```php
-wp cache delete bp_hidden_user_ids
+```bash
+wp cache delete bp_hidden_user_ids buddypress_hidden_profiles
 ```
 
 ## Requirements
@@ -159,7 +159,7 @@ If a hidden profile is still visible:
 1. Clear the WordPress object cache
 2. Verify the user has the correct meta value: `profile_visibility = hidden`
 3. Check that the viewing user is not an admin or the profile owner
-4. Ensure the cache is cleared after making changes
+4. If you hide users with the `buddypress_hidden_profiles_additional_hidden_ids` filter, clear the cache after changing who it returns
 5. Check if any filters are overriding the default behavior
 
 ## Contributing

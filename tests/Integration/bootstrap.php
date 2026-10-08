@@ -28,10 +28,18 @@ require_once "{$_tests_dir}/includes/functions.php";
  * Load BuddyPress first: the plugin hooks into bp_loaded, which BuddyPress
  * fires on plugins_loaded. wp-env installs it alongside this plugin.
  */
-// Groups are off by default, but group member lists need testing.
+// Only the core components are on by default, but the plugin also hides members from these.
 \tests_add_filter(
 	'bp_active_components',
-	fn( $components ) => array_merge( (array) $components, array( 'groups' => 1 ) )
+	fn( $components ) => array_merge(
+		(array) $components,
+		array(
+			'activity' => 1,
+			'friends'  => 1,
+			'groups'   => 1,
+			'xprofile' => 1,
+		)
+	)
 );
 
 \tests_add_filter(
@@ -55,3 +63,6 @@ WPIntegration\bootstrap_it();
 require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 require_once buddypress()->plugin_dir . 'bp-core/admin/bp-core-admin-schema.php';
 bp_core_install();
+
+// Normally set on activation. Friendship emails need it for their unsubscribe links.
+bp_update_option( 'bp-emails-unsubscribe-salt', base64_encode( wp_generate_password( 64, true, true ) ) );
