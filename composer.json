@@ -10,8 +10,8 @@
 		}
 	],
 	"support": {
-		"issues": "https://github.com/Automattic/BuddyPress-Hidden-Profiles/issues",
-		"source": "https://github.com/Automattic/BuddyPress-Hidden-Profiles"
+		"issues": "https://github.com/Automattic/buddypress-hidden-profiles/issues",
+		"source": "https://github.com/Automattic/buddypress-hidden-profiles"
 	},
 	"require": {
 		"php": ">=8.2",
@@ -39,7 +39,7 @@
 	"scripts": {
 		"cs": "@php ./vendor/bin/phpcs -q",
 		"cs-fix": "@php ./vendor/bin/phpcbf -q",
-		"i18n": "@php wp i18n make-pot . ./languages/buddypress-hidden-profiles.pot --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/Automattic/BuddyPress-Hidden-Profiles/issues\"}'",
+		"i18n": "@php wp i18n make-pot . ./languages/buddypress-hidden-profiles.pot --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/Automattic/buddypress-hidden-profiles/issues\"}'",
 		"lint": "@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude node_modules --exclude .git",
 		"lint-ci": "@php ./vendor/php-parallel-lint/php-parallel-lint/parallel-lint . -e php --exclude vendor --exclude node_modules --exclude .git --checkstyle",
 		"test": "@test:integration",

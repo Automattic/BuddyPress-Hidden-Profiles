@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: BuddyPress Hidden Profiles 1.1.0\n"
-"Report-Msgid-Bugs-To: https://github.com/Automattic/BuddyPress-Hidden-Profiles/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/Automattic/buddypress-hidden-profiles/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
