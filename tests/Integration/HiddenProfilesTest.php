@@ -82,10 +82,57 @@ final class HiddenProfilesTest extends TestCase {
 	}
 
 	/**
-	 * Clean up the superglobal.
+	 * Create a member who shows up in "active" member lists.
+	 *
+	 * BuddyPress member lists only include users with a last activity date.
+	 *
+	 * @param string $login Optional user login.
+	 * @return int User ID.
+	 */
+	private function create_active_member( string $login = '' ): int {
+		$user_id = self::factory()->user->create( $login ? array( 'user_login' => $login ) : array() );
+		bp_update_user_last_activity( $user_id );
+
+		return $user_id;
+	}
+
+	/**
+	 * Run a members loop, as the directory does, and return the user IDs it found.
+	 *
+	 * @param array $args bp_has_members() arguments.
+	 * @return int[] User IDs.
+	 */
+	private function members_loop_ids( array $args = array() ): array {
+		bp_update_user_last_activity( $this->member_id );
+		bp_update_user_last_activity( $this->admin_id );
+		bp_has_members( $args + array( 'per_page' => 100 ) );
+
+		return array_map( 'intval', wp_list_pluck( $GLOBALS['members_template']->members, 'ID' ) );
+	}
+
+	/**
+	 * Send a GET request to the BuddyPress (or BuddyBoss) REST API.
+	 *
+	 * @param string $route  Route after the namespace, e.g. '/members'.
+	 * @param array  $params Query parameters.
+	 * @return \WP_REST_Response
+	 */
+	private function rest_get( string $route, array $params = array() ): \WP_REST_Response {
+		bp_update_user_last_activity( $this->member_id );
+		bp_update_user_last_activity( $this->admin_id );
+
+		$request = new \WP_REST_Request( 'GET', '/' . bp_rest_namespace() . '/' . bp_rest_version() . $route );
+		$request->set_query_params( $params );
+
+		return rest_get_server()->dispatch( $request );
+	}
+
+	/**
+	 * Clean up the superglobal and the REST server.
 	 */
 	public function tear_down() {
-		$_POST = array();
+		$_POST                     = array();
+		$GLOBALS['wp_rest_server'] = null;
 		parent::tear_down();
 	}
 
@@ -150,28 +197,136 @@ final class HiddenProfilesTest extends TestCase {
 		$this->assertFalse( wp_cache_get( 'bp_hidden_user_ids' ) );
 	}
 
-	public function test_member_directory_excludes_hidden_users_for_non_admins(): void {
+	public function test_members_loop_excludes_hidden_users_for_visitors(): void {
 		$this->hide( $this->member_id );
-		wp_set_current_user( $this->member_id );
+		$visible_id = $this->create_active_member();
 
-		parse_str( $this->plugin->ajax_exclude_hidden( 'type=active&exclude=5', 'members' ), $args );
+		$ids = $this->members_loop_ids();
 
-		$this->assertSame( 'active', $args['type'] );
-		$this->assertSame( array( '5', (string) $this->member_id ), $args['exclude'] );
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertContains( $visible_id, $ids );
 	}
 
-	public function test_member_directory_is_unfiltered_for_admins(): void {
+	public function test_members_loop_excludes_hidden_users_for_other_members(): void {
+		$this->hide( $this->member_id );
+		wp_set_current_user( $this->create_active_member() );
+
+		$this->assertNotContains( $this->member_id, $this->members_loop_ids() );
+	}
+
+	public function test_members_loop_shows_hidden_users_to_admins(): void {
 		$this->hide( $this->member_id );
 		wp_set_current_user( $this->admin_id );
 
-		$this->assertSame( 'type=active', $this->plugin->ajax_exclude_hidden( 'type=active', 'members' ) );
+		$this->assertContains( $this->member_id, $this->members_loop_ids() );
 	}
 
-	public function test_other_directories_are_unfiltered(): void {
+	public function test_members_loop_shows_hidden_users_to_themselves(): void {
 		$this->hide( $this->member_id );
 		wp_set_current_user( $this->member_id );
 
-		$this->assertSame( 'type=active', $this->plugin->ajax_exclude_hidden( 'type=active', 'groups' ) );
+		$this->assertContains( $this->member_id, $this->members_loop_ids() );
+	}
+
+	public function test_members_loop_cannot_ask_for_hidden_users_by_id(): void {
+		$this->hide( $this->member_id );
+		$visible_id = $this->create_active_member();
+
+		$this->assertSame(
+			array( $visible_id ),
+			$this->members_loop_ids( array( 'user_ids' => array( $this->member_id, $visible_id ) ) ),
+			'user_ids skips the exclude clause, so hidden users must be removed from it.'
+		);
+		$this->assertSame( array(), $this->members_loop_ids( array( 'include' => $this->member_id ) ) );
+	}
+
+	public function test_existing_exclusions_are_kept(): void {
+		$this->hide( $this->member_id );
+
+		$args = $this->plugin->exclude_hidden_from_query_args( array( 'exclude' => '5,6' ) );
+
+		$this->assertSame( array( 5, 6, $this->member_id ), $args['exclude'] );
+	}
+
+	public function test_query_args_from_a_short_circuiting_filter_are_left_alone(): void {
+		$this->hide( $this->member_id );
+		$error = new \WP_Error( 'nope' );
+
+		$this->assertSame( $error, $this->plugin->exclude_hidden_from_query_args( $error ) );
+	}
+
+	public function test_mention_suggestions_exclude_hidden_users(): void {
+		$hidden_id  = $this->create_active_member( 'hpmention-hidden' );
+		$visible_id = $this->create_active_member( 'hpmention-visible' );
+		$this->hide( $hidden_id );
+		wp_set_current_user( $this->create_active_member() );
+
+		$suggestions = bp_core_get_suggestions(
+			array(
+				'term' => 'hpmention',
+				'type' => 'members',
+			)
+		);
+
+		$this->assertIsArray( $suggestions );
+		$ids = array_map( 'intval', wp_list_pluck( $suggestions, 'user_id' ) );
+		$this->assertSame( array( $visible_id ), $ids );
+	}
+
+	public function test_rest_members_list_excludes_hidden_users_for_visitors(): void {
+		$this->hide( $this->member_id );
+		$visible_id = $this->create_active_member();
+
+		$response = $this->rest_get( '/members' );
+
+		$this->assertSame( 200, $response->get_status() );
+		$ids = wp_list_pluck( $response->get_data(), 'id' );
+		$this->assertNotContains( $this->member_id, $ids );
+		$this->assertContains( $visible_id, $ids );
+	}
+
+	public function test_rest_members_list_cannot_include_hidden_users(): void {
+		$this->hide( $this->member_id );
+
+		$response = $this->rest_get( '/members', array( 'include' => array( $this->member_id ) ) );
+
+		$this->assertSame( array(), $response->get_data() );
+	}
+
+	public function test_rest_members_list_shows_hidden_users_to_admins(): void {
+		$this->hide( $this->member_id );
+		wp_set_current_user( $this->admin_id );
+
+		$ids = wp_list_pluck( $this->rest_get( '/members' )->get_data(), 'id' );
+
+		$this->assertContains( $this->member_id, $ids );
+	}
+
+	public function test_rest_hidden_member_looks_like_a_missing_member_to_visitors(): void {
+		$this->hide( $this->member_id );
+
+		$hidden  = $this->rest_get( '/members/' . $this->member_id );
+		$missing = $this->rest_get( '/members/999999999' );
+
+		$this->assertSame( 404, $hidden->get_status() );
+		$this->assertSame( $missing->get_status(), $hidden->get_status() );
+		$this->assertSame( $missing->get_data()['code'], $hidden->get_data()['code'] );
+	}
+
+	public function test_rest_hidden_member_is_shown_to_themselves_and_admins(): void {
+		$this->hide( $this->member_id );
+
+		wp_set_current_user( $this->member_id );
+		$this->assertSame( 200, $this->rest_get( '/members/' . $this->member_id )->get_status(), 'Owner' );
+
+		wp_set_current_user( $this->admin_id );
+		$this->assertSame( 200, $this->rest_get( '/members/' . $this->member_id )->get_status(), 'Admin' );
+	}
+
+	public function test_rest_visible_member_is_unaffected(): void {
+		$this->hide( $this->member_id );
+
+		$this->assertSame( 200, $this->rest_get( '/members/' . $this->create_active_member() )->get_status() );
 	}
 
 	public function test_admin_can_hide_and_unhide_a_profile(): void {

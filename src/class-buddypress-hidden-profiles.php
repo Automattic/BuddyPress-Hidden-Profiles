@@ -23,8 +23,15 @@ class BuddyPress_Hidden_Profiles {
 		// 1) 404 direct profile URLs
 		add_action( 'bp_template_redirect', array( $this, 'maybe_hide_profile' ) );
 
-		// 2) AJAX exclusion for *all* directory loads
-		add_filter( 'bp_ajax_querystring', array( $this, 'ajax_exclude_hidden' ), 20, 2 );
+		// 2) Exclude from member queries that reach non-admins. These are hooked at the
+		// output boundaries rather than BP_User_Query itself, because that class also
+		// backs internal work (activity author lookups, background friend counts) that
+		// must still see every user.
+		add_filter( 'bp_after_has_members_parse_args', array( $this, 'exclude_hidden_from_query_args' ) );
+		add_filter( 'bp_members_suggestions_query_args', array( $this, 'exclude_hidden_from_query_args' ) );
+		add_filter( 'bp_groups_member_suggestions_query_args', array( $this, 'exclude_hidden_from_query_args' ) );
+		add_filter( 'bp_rest_members_get_items_query_args', array( $this, 'exclude_hidden_from_query_args' ) );
+		add_filter( 'bp_rest_members_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
 
 		// 3) Admin UI on profile screens
 		add_action( 'show_user_profile', array( $this, 'visibility_setting_ui' ) );
@@ -52,11 +59,7 @@ class BuddyPress_Hidden_Profiles {
 			return;
 		}
 		$uid = bp_displayed_user_id();
-		if ( ! $uid
-			|| current_user_can( 'manage_options' )
-			|| get_current_user_id() === $uid
-			|| ! $this->is_hidden( $uid )
-		) {
+		if ( ! $uid || $this->current_user_can_view( $uid ) ) {
 			return;
 		}
 		status_header( 404 );
@@ -66,29 +69,80 @@ class BuddyPress_Hidden_Profiles {
 	}
 
 	/**
-	 * Exclude hidden users from AJAX requests.
+	 * Exclude hidden users from a set of BP_User_Query arguments.
 	 *
-	 * @param string $qs          The query string.
-	 * @param string $object_type The object type.
-	 * @return string The modified query string.
+	 * Used for member loops (directories, widgets, friends lists), @mention
+	 * suggestions and the REST members collection, which all pass the same
+	 * argument shape through to BP_User_Query.
+	 *
+	 * @param array|mixed $args BP_User_Query arguments.
+	 * @return array|mixed The arguments with hidden users excluded.
 	 */
-	public function ajax_exclude_hidden( $qs, $object_type ) {
-		if ( 'members' !== $object_type
-			|| current_user_can( 'manage_options' )
-		) {
-			return $qs;
+	public function exclude_hidden_from_query_args( $args ) {
+		// Another filter may have short-circuited with a WP_Error.
+		if ( ! is_array( $args ) ) {
+			return $args;
 		}
 
-		$args = wp_parse_args( $qs );
-
-		// Get all hidden user IDs.
-		$hidden = $this->get_hidden_user_ids();
-		if ( $hidden ) {
-			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude
-			$args['exclude'] = array_merge( (array) ( $args['exclude'] ?? array() ), $hidden );
+		$hidden = $this->get_hidden_user_ids_for_current_user();
+		if ( ! $hidden ) {
+			return $args;
 		}
 
-		return http_build_query( $args );
+		// BP_User_Query skips its SQL, and so ignores 'exclude', when 'user_ids' is set.
+		if ( ! empty( $args['user_ids'] ) ) {
+			$args['user_ids'] = array_values( array_diff( wp_parse_id_list( $args['user_ids'] ), $hidden ) );
+		}
+
+		// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude
+		$args['exclude'] = array_merge( wp_parse_id_list( $args['exclude'] ?? array() ), $hidden );
+
+		return $args;
+	}
+
+	/**
+	 * Respond to REST requests for a single hidden member as if they don't exist.
+	 *
+	 * @param true|\WP_Error   $retval  The permission check result so far.
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return true|\WP_Error The permission check result.
+	 */
+	public function rest_hide_member( $retval, $request ) {
+		if ( true !== $retval || $this->current_user_can_view( (int) $request['id'] ) ) {
+			return $retval;
+		}
+
+		// Match the BuddyPress/BuddyBoss response for a non-existent member.
+		return new \WP_Error(
+			'bp_rest_member_invalid_id',
+			__( 'Invalid member ID.', 'buddypress-hidden-profiles' ),
+			array( 'status' => 404 )
+		);
+	}
+
+	/**
+	 * Whether the current user may see a given user's profile.
+	 *
+	 * @param int $user_id The user ID.
+	 * @return bool True if the current user is an admin, the user themselves, or the user isn't hidden.
+	 */
+	public function current_user_can_view( $user_id ) {
+		return current_user_can( 'manage_options' )
+			|| get_current_user_id() === $user_id
+			|| ! $this->is_hidden( $user_id );
+	}
+
+	/**
+	 * Get the IDs of hidden users that the current user should not see.
+	 *
+	 * @return int[] Hidden user IDs, excluding the current user. Empty for admins.
+	 */
+	private function get_hidden_user_ids_for_current_user() {
+		if ( current_user_can( 'manage_options' ) ) {
+			return array();
+		}
+
+		return array_values( array_diff( wp_parse_id_list( $this->get_hidden_user_ids() ), array( get_current_user_id() ) ) );
 	}
 
 	/**

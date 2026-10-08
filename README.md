@@ -15,9 +15,11 @@ Allows site admins to mark BuddyPress user profiles as hidden, excluding them fr
 This plugin provides a simple way to hide specific BuddyPress user profiles from non-administrative users. When a profile is marked as hidden:
 
 * The profile page returns a 404 error for non-admins
-* The user is excluded from member directories
+* The user is excluded from member directories, widgets, and friends lists
 * The user is excluded from search results
 * The user is excluded from AJAX-loaded member lists
+* The user is excluded from @mention suggestions
+* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them by ID returns a 404
 
 Hidden profiles remain visible to:
 * The profile owner themselves
