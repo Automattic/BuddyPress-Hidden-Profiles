@@ -211,12 +211,13 @@ class BuddyPress_Hidden_Profiles {
 		}
 		$value = get_user_meta( $user->ID, self::META_KEY, true );
 		?>
-		<h3><?php esc_html_e( 'Profile Visibility', 'buddypress-hidden-profiles' ); ?></h3>
+		<h2><?php esc_html_e( 'Profile Visibility', 'buddypress-hidden-profiles' ); ?></h2>
 		<table class="form-table">
 			<tr>
-				<th><label for="<?php echo esc_attr( self::META_KEY ); ?>"><?php esc_html_e( 'Hidden Profile', 'buddypress-hidden-profiles' ); ?></label></th>
+				<th><label for="buddypress-hidden-profiles-visibility"><?php esc_html_e( 'Hidden Profile', 'buddypress-hidden-profiles' ); ?></label></th>
 				<td>
 					<input type="checkbox"
+							id="buddypress-hidden-profiles-visibility"
 							name="<?php echo esc_attr( self::META_KEY ); ?>"
 							value="<?php echo esc_attr( self::META_HIDDEN_VALUE ); ?>"
 							<?php checked( $value, self::META_HIDDEN_VALUE ); ?> />
