@@ -28,7 +28,6 @@ defined( 'ABSPATH' ) || exit;
  * This is because the UI may not allow access to edit the profile.
  * Use WP-CLI instead:
  *     wp user meta update 1 profile_visibility hidden
- *     wp cache delete bp_hidden_user_ids buddypress_hidden_profiles
  */
 
 require_once __DIR__ . '/src/class-buddypress-hidden-profiles.php';

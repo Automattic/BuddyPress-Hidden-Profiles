@@ -48,7 +48,10 @@ class BuddyPress_Hidden_Profiles {
 		add_action( 'personal_options_update', array( $this, 'save_visibility_setting' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_visibility_setting' ) );
 
-		// 4) Clear cache when users are added/removed.
+		// 4) Clear cache when who is hidden may have changed.
+		add_action( 'added_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
+		add_action( 'updated_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
+		add_action( 'deleted_user_meta', array( $this, 'maybe_clear_hidden_cache' ), 10, 3 );
 		add_action( 'set_user_role', array( $this, 'clear_hidden_cache' ) );
 		add_action( 'delete_user', array( $this, 'clear_hidden_cache' ) );
 		add_action( 'user_register', array( $this, 'clear_hidden_cache' ) );
@@ -242,9 +245,6 @@ class BuddyPress_Hidden_Profiles {
 		} else {
 			delete_user_meta( $user_id, self::META_KEY );
 		}
-
-		// Clear the cache when a user's visibility changes.
-		$this->clear_hidden_cache();
 	}
 
 	/**
@@ -252,6 +252,21 @@ class BuddyPress_Hidden_Profiles {
 	 */
 	public function clear_hidden_cache() {
 		wp_cache_delete( self::CACHE_KEY, self::CACHE_GROUP );
+	}
+
+	/**
+	 * Clear the hidden users cache when a user's visibility meta changes.
+	 *
+	 * This covers the profile screen, WP-CLI and any other code that changes the meta.
+	 *
+	 * @param int|int[] $meta_ids Meta ID(s), unused.
+	 * @param int       $user_id  User ID, unused.
+	 * @param string    $meta_key Meta key.
+	 */
+	public function maybe_clear_hidden_cache( $meta_ids, $user_id, $meta_key ) {
+		if ( self::META_KEY === $meta_key ) {
+			$this->clear_hidden_cache();
+		}
 	}
 
 	/**

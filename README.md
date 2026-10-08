@@ -70,10 +70,9 @@ wp user meta update <user_id> profile_visibility hidden
 
 # Unhide a profile
 wp user meta delete <user_id> profile_visibility
-
-# Clear the hidden users cache
-wp cache delete bp_hidden_user_ids buddypress_hidden_profiles
 ```
+
+Changing the `profile_visibility` meta clears the hidden users cache, so the change shows straight away.
 
 ### Extending with Filters
 
@@ -137,6 +136,7 @@ add_filter(
 ### Cache Management
 
 The plugin caches the list of hidden IDs for better performance. On multisite, the list is shared by every site in the network. It automatically clears its cache when:
+* A user's `profile_visibility` meta changes, whether from the profile screen, WP-CLI or code
 * A user is registered
 * A user is deleted
 * A user's role changes
@@ -159,7 +159,7 @@ If a hidden profile is still visible:
 1. Clear the WordPress object cache
 2. Verify the user has the correct meta value: `profile_visibility = hidden`
 3. Check that the viewing user is not an admin or the profile owner
-4. Ensure the cache is cleared after making changes
+4. If you hide users with the `buddypress_hidden_profiles_additional_hidden_ids` filter, clear the cache after changing who it returns
 5. Check if any filters are overriding the default behavior
 
 ## Contributing

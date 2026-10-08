@@ -51,5 +51,5 @@ Follow the standards in `~/code/plugin-standards/`. Key points:
 ## Common Pitfalls
 
 - **The wp-env BuddyPress URL**: wp-env names a plugin's directory after its ZIP file, and the test bootstrap requires `plugins/buddypress/bp-loader.php`. Keep the URL ending in `buddypress.zip`.
-- **Clearing the cache**: anything that changes who is hidden must clear `bp_hidden_user_ids`, or directories keep showing stale results for up to a day.
+- **Clearing the cache**: anything that changes who is hidden must clear `bp_hidden_user_ids`, or directories keep showing stale results for up to a day. Changes to the `profile_visibility` meta clear it already.
 - **Release ZIP contents**: the release workflow builds the ZIP with `rsync --exclude-from=.distignore`. Add new development-only files to both `.distignore` and `.gitattributes`.
