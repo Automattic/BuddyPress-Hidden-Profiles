@@ -326,13 +326,15 @@ class BuddyPress_Hidden_Profiles {
 		/**
 		 * Filter whether a user's profile should be hidden.
 		 *
-		 * This filter allows other code to determine if a profile should be hidden,
-		 * overriding the default meta-based check. Return true to hide the profile,
-		 * false to show it, or null to fall back to the default meta check.
+		 * This filter allows other code to decide whether a single profile is hidden,
+		 * for its profile page and REST requests for it by ID. It doesn't affect
+		 * member lists: use buddypress_hidden_profiles_additional_hidden_ids to hide
+		 * a user everywhere. Return true to hide the profile, false to show it, or
+		 * null to fall back to the list of hidden user IDs.
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param bool|null $is_hidden Whether the profile should be hidden. Null to use default check.
+		 * @param bool|null $is_hidden Whether the profile should be hidden. Null to use the hidden list.
 		 * @param int       $user_id   The user ID to check.
 		 */
 		$is_hidden = apply_filters( 'buddypress_hidden_profiles_is_hidden', null, $user_id );
@@ -342,7 +344,7 @@ class BuddyPress_Hidden_Profiles {
 			return $is_hidden;
 		}
 
-		// Otherwise fall back to the default meta check.
-		return get_user_meta( $user_id, self::META_KEY, true ) === self::META_HIDDEN_VALUE;
+		// Otherwise fall back to the same list that member lists use.
+		return in_array( (int) $user_id, $this->get_hidden_user_ids(), true );
 	}
 }

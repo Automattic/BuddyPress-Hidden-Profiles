@@ -80,7 +80,7 @@ The plugin provides two filters for extending its functionality:
 
 #### 1. `buddypress_hidden_profiles_is_hidden`
 
-This filter allows you to determine if a specific user's profile should be hidden. It's called when checking individual profiles.
+This filter allows you to decide whether a single user's profile is hidden. It's called for their profile page and for REST API requests for them by ID. It doesn't affect member lists, so to hide a user everywhere, use the `buddypress_hidden_profiles_additional_hidden_ids` filter instead. Return `null` to fall back to the list of hidden users.
 
 Here's how it could be used:
 
@@ -109,7 +109,7 @@ add_filter(
 
 #### 2. `buddypress_hidden_profiles_additional_hidden_ids`
 
-This filter allows you to add user IDs to the list of hidden users. It's used in directory listings and should return IDs determined by a performant query.
+This filter allows you to add user IDs to the list of hidden users. Users it returns are hidden everywhere: member lists, profile pages and the REST API. It should return an array of IDs determined by a performant query. The result is cached for up to a day, so clear the cache when the users it returns change.
 
 Here's how it could be used:
 
