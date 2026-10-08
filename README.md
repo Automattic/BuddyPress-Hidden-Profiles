@@ -12,22 +12,33 @@ Allows site admins to mark BuddyPress user profiles as hidden, excluding them fr
 
 ## Description
 
-This plugin provides a simple way to hide specific BuddyPress user profiles from non-administrative users. When a profile is marked as hidden:
+This plugin provides a simple way to hide specific BuddyPress user profiles from non-administrative users. It's intended for accounts that other members don't need to find, such as platform service accounts and temporary support accounts. When a profile is marked as hidden:
 
 * The profile page returns a 404 error for non-admins
-* The user is excluded from member directories
+* The user is excluded from member directories, widgets, and friends lists
 * The user is excluded from search results
 * The user is excluded from AJAX-loaded member lists
+* The user is excluded from group member lists, except for that group's admins and moderators
+* The user is excluded from group invite lists
+* The user is excluded from @mention suggestions
+* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them by ID returns a 404
 
 Hidden profiles remain visible to:
 * The profile owner themselves
 * Site administrators
 * Users with the `manage_options` capability
 
+### Known limitations
+
+The plugin hides a member's profile and keeps them out of member listings. It doesn't make them invisible across the site, so it works best for accounts that don't take part in the community:
+
+* Content the member creates, such as activity updates, forum posts, comments and messages, still shows their name and avatar, and links to their profile, which returns a 404.
+* If the member is an admin or moderator of a group, they're still listed as one in that group's header. Avoid giving hidden members those roles.
+
 ## Features
 
 * Simple checkbox interface in the WordPress user profile screen
-* Complete profile hiding from non-admins
+* Hides profiles and member listings from non-admins
 * Efficient caching of hidden user IDs
 * WP-CLI support for bulk operations
 * Maintains visibility for admins and profile owners
