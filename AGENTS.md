@@ -49,7 +49,7 @@ Follow the standards in `~/code/plugin-standards/`. Key points:
   - a label from the standard set in `LABELS.md` (`type: ...`)
   - the assignee `GaryJones`
 - **Linear**: Work is tracked in the `VIPPLUG` team, with the `Plugin` label `BuddyPress Hidden Profiles`. Link a PR to its issue with `Fixes VIPPLUG-123` in the description.
-- **Tests**: Integration tests only, in `tests/Integration/`, extending `Yoast\WPTestUtils\WPIntegration\TestCase`. There is no unit suite, because the plugin is thin glue around WordPress and BuddyPress.
+- **Tests**: Integration tests only, in `tests/Integration/`, one file per feature, extending the shared `TestCase` there for its fixtures. There is no unit suite, because the plugin is thin glue around WordPress and BuddyPress.
 - **i18n**: User-facing strings use the `buddypress-hidden-profiles` text domain.
 
 ## Common Pitfalls
