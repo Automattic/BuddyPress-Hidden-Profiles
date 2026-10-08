@@ -50,7 +50,6 @@ Follow the standards in `~/code/plugin-standards/`. Key points:
 
 ## Common Pitfalls
 
-- **Logging in during tests**: the plugin checks capabilities against `bp_loggedin_user_id()`, which BuddyPress sets once while loading. Call `wp_set_current_user()` and also set `buddypress()->loggedin_user->id`, as `HiddenProfilesTest::log_in()` does.
 - **The wp-env BuddyPress URL**: wp-env names a plugin's directory after its ZIP file, and the test bootstrap requires `plugins/buddypress/bp-loader.php`. Keep the URL ending in `buddypress.zip`.
 - **Clearing the cache**: anything that changes who is hidden must clear `bp_hidden_user_ids`, or directories keep showing stale results for up to a day.
 - **Release ZIP contents**: the release workflow builds the ZIP with `rsync --exclude-from=.distignore`. Add new development-only files to both `.distignore` and `.gitattributes`.

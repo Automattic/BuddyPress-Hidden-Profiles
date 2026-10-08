@@ -53,7 +53,7 @@ class BuddyPress_Hidden_Profiles {
 		}
 		$uid = bp_displayed_user_id();
 		if ( ! $uid
-			|| user_can( bp_loggedin_user_id(), 'manage_options' )
+			|| current_user_can( 'manage_options' )
 			|| get_current_user_id() === $uid
 			|| ! $this->is_hidden( $uid )
 		) {
@@ -74,7 +74,7 @@ class BuddyPress_Hidden_Profiles {
 	 */
 	public function ajax_exclude_hidden( $qs, $object_type ) {
 		if ( 'members' !== $object_type
-			|| user_can( bp_loggedin_user_id(), 'manage_options' )
+			|| current_user_can( 'manage_options' )
 		) {
 			return $qs;
 		}
@@ -97,7 +97,7 @@ class BuddyPress_Hidden_Profiles {
 	 * @param object $user The user object.
 	 */
 	public function visibility_setting_ui( $user ) {
-		if ( ! user_can( bp_loggedin_user_id(), 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 		$value = get_user_meta( $user->ID, self::META_KEY, true );
@@ -125,7 +125,7 @@ class BuddyPress_Hidden_Profiles {
 	 * @param int $user_id The user ID.
 	 */
 	public function save_visibility_setting( $user_id ) {
-		if ( ! user_can( bp_loggedin_user_id(), 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 		if ( ! isset( $_POST['buddypress_hidden_profiles_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( $_POST['buddypress_hidden_profiles_nonce'] ), 'buddypress_hidden_profiles_visibility' ) ) {
