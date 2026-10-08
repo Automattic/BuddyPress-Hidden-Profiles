@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Check admin capabilities with `current_user_can()` by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/5
 
 ### Security
-* Hide profiles from every member list, including widgets, friends lists, group member lists, group invite lists and @mention suggestions, not just the AJAX directory by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/10
+* Hide profiles from every member list, including widgets, friends lists, group member lists, group invite lists and @mention suggestions, not just the AJAX directory. Reported via HackerOne by [antaloaalonso](https://hackerone.com/antaloaalonso), fixed by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/10
 * Return a 404 for hidden profiles before BuddyPress handles the request, so pages such as activity feeds no longer load by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/11
 * Return a 404 from the REST API for a hidden member, their avatar, cover image and profile field data by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/12
 * Hide users added by the `buddypress_hidden_profiles_additional_hidden_ids` filter on their profile page too, not just in member lists by @GaryJones in https://github.com/Automattic/buddypress-hidden-profiles/pull/12
