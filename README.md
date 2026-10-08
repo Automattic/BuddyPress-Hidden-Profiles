@@ -21,7 +21,7 @@ This plugin provides a simple way to hide specific BuddyPress user profiles from
 * The user is excluded from group member lists, except for that group's admins and moderators
 * The user is excluded from group invite lists
 * The user is excluded from @mention suggestions
-* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them by ID returns a 404
+* The user is excluded from the BuddyPress/BuddyBoss REST API members list, and requesting them, their avatar, their cover image or their profile field data by ID returns a 404
 
 Hidden profiles remain visible to:
 * The profile owner themselves

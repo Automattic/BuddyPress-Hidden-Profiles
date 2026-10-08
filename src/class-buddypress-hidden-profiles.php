@@ -40,6 +40,9 @@ class BuddyPress_Hidden_Profiles {
 		add_filter( 'bp_after_group_has_members_parse_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 		add_filter( 'bp_rest_group_members_get_items_query_args', array( $this, 'exclude_hidden_from_group_member_args' ) );
 		add_filter( 'bp_rest_members_action_update_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_attachments_member_avatar_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_attachments_member_cover_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
+		add_filter( 'bp_rest_xprofile_data_get_item_permissions_check', array( $this, 'rest_hide_member' ), 10, 2 );
 		add_action( 'bp_pre_user_query_construct', array( $this, 'exclude_hidden_from_unfiltered_lists' ), 20 );
 
 		// 3) Admin UI on profile screens
@@ -158,12 +161,19 @@ class BuddyPress_Hidden_Profiles {
 	/**
 	 * Respond to REST requests for a single hidden member as if they don't exist.
 	 *
+	 * Covers the member itself and routes about them, such as their avatar,
+	 * which name the member 'user_id' rather than 'id'.
+	 *
 	 * @param true|\WP_Error   $retval  The permission check result so far.
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return true|\WP_Error The permission check result.
 	 */
 	public function rest_hide_member( $retval, $request ) {
-		if ( true !== $retval || $this->current_user_can_view( (int) $request['id'] ) ) {
+		// Use the name the route gives the member, but read it as the endpoint does:
+		// a query parameter of the same name overrides the route's value.
+		$param = array_key_exists( 'user_id', $request->get_url_params() ) ? 'user_id' : 'id';
+
+		if ( true !== $retval || $this->current_user_can_view( (int) $request->get_param( $param ) ) ) {
 			return $retval;
 		}
 
