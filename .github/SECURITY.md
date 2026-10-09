@@ -10,7 +10,7 @@ Security fixes are made in the latest release only.
 
 Report them through Automattic's HackerOne programme instead: https://hackerone.com/automattic
 
-Reporting through HackerOne also makes you eligible for Automattic's bug bounty.
+Reporting through HackerOne can also make you eligible for Automattic's bug bounty. Please read the [bounty eligibility guidelines](https://hackerone.com/automattic) before submitting reports.
 
 Please include:
 
